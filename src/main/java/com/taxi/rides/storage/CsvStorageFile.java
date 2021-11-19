@@ -1,6 +1,7 @@
 package com.taxi.rides.storage;
 
 import com.taxi.rides.storage.index.ColumnIndex;
+import com.taxi.rides.storage.index.ColumnIndexes;
 import com.taxi.rides.storage.index.RowLocator;
 import com.taxi.rides.storage.schema.Column;
 import com.taxi.rides.storage.schema.Schema;
@@ -21,6 +22,7 @@ public final class CsvStorageFile {
   private final Path csvPath;
   private final Schema csvSchema;
   private final RowLocator rowLocator;
+  private final ColumnIndexes indexes;
 
   public CsvStorageFile(
       Path csvPath,
@@ -51,11 +53,13 @@ public final class CsvStorageFile {
       populateIndexes(reader, csvSchema, rowLocator, indexesToPopulate);
     }
     this.rowLocator = rowLocator;
+    this.indexes = new ColumnIndexes(indexesToPopulate);
   }
 
   private static void populateIndexes(
       CsvReader reader, Schema schema, RowLocator rowLocator, List<ColumnIndex> indexesToPopulate) {
 
+    // compute for each index, where required column located inside CSV row(e.g., column index)
     var indexes =
         indexesToPopulate.stream()
             .map(
@@ -76,7 +80,8 @@ public final class CsvStorageFile {
             });
   }
 
-  public RowReader newReader(String[] requiredColumns) throws IOException {
+  public RowReader newReader(String[] requiredColumns, ColumnPredicate predicate)
+      throws IOException {
     int[] colIdx = new int[requiredColumns.length];
     int i = 0;
     for (String reqCol : requiredColumns) {
@@ -90,7 +95,7 @@ public final class CsvStorageFile {
       colIdx[i++] = index;
     }
 
-    return new CsvIter(colIdx);
+    return new CsvIter(colIdx, predicate);
   }
 
   record IndexState(ColumnIndex index, int columnIndex) {}
@@ -102,7 +107,7 @@ public final class CsvStorageFile {
     private final CloseableIterator<CsvRow> rowIter;
     private final int[] colIdx;
 
-    public CsvIter(int[] colIdx) throws IOException {
+    public CsvIter(int[] colIdx, ColumnPredicate predicate) throws IOException {
       this.colIdx = colIdx;
       csvReader = CsvReader.builder().fieldSeparator(',').build(csvPath);
       rowIter = csvReader.iterator();
