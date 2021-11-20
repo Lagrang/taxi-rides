@@ -1,5 +1,6 @@
 package com.taxi.rides.storage;
 
+import com.google.common.collect.Range;
 import com.taxi.rides.storage.index.ColumnIndex;
 import com.taxi.rides.storage.index.ColumnIndexes;
 import com.taxi.rides.storage.index.RowLocator;
@@ -10,7 +11,13 @@ import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
 import de.siegmar.fastcsv.reader.NamedCsvReader;
 import java.io.IOException;
+import java.io.Reader;
+import java.nio.channels.Channels;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -95,7 +102,9 @@ public final class CsvStorageFile {
       colIdx[i++] = index;
     }
 
-    return new CsvIter(colIdx, predicate);
+    Range<Long> rowsRange = indexes.evaluate(predicate);
+    Range<Long> rowOffsets = rowLocator.getClosestOffsets(rowsRange);
+    return new CsvIter(colIdx, rowOffsets);
   }
 
   record IndexState(ColumnIndex index, int columnIndex) {}
@@ -106,10 +115,24 @@ public final class CsvStorageFile {
     private final CsvReader csvReader;
     private final CloseableIterator<CsvRow> rowIter;
     private final int[] colIdx;
+    private final SeekableByteChannel fileChannel;
+    private final Reader fileReader;
+    private final long lastRowOffset;
+    private long lastSeenOffset;
 
-    public CsvIter(int[] colIdx, ColumnPredicate predicate) throws IOException {
+    public CsvIter(int[] colIdx, Range<Long> offsets) throws IOException {
       this.colIdx = colIdx;
-      csvReader = CsvReader.builder().fieldSeparator(',').build(csvPath);
+      fileChannel = Files.newByteChannel(csvPath, StandardOpenOption.READ);
+      if (offsets.hasLowerBound()) {
+        fileChannel.position(offsets.lowerEndpoint());
+      }
+      if (offsets.hasUpperBound()) {
+        lastRowOffset = offsets.upperEndpoint();
+      } else {
+        lastRowOffset = fileChannel.size();
+      }
+      fileReader = Channels.newReader(fileChannel, StandardCharsets.UTF_8);
+      csvReader = CsvReader.builder().build(fileReader);
       rowIter = csvReader.iterator();
       readerSchema =
           new Schema(
@@ -118,18 +141,21 @@ public final class CsvStorageFile {
 
     @Override
     public void close() throws Exception {
+      fileChannel.close();
+      fileReader.close();
       csvReader.close();
     }
 
     @Override
     public boolean hasNext() {
-      return rowIter.hasNext();
+      return lastRowOffset > lastSeenOffset && rowIter.hasNext();
     }
 
     @Override
     public Row next() {
       var result = new Row(colIdx.length);
       var row = rowIter.next();
+      lastSeenOffset = row.getStartingOffset();
       for (int idx : colIdx) {
         String rawVal = row.getField(idx);
         var columnValue = csvSchema.getColumnAt(idx).dataType().parseFrom(rawVal);

@@ -1,12 +1,17 @@
 package com.taxi.rides.storage.index;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
 /**
- * Row locator maintenance sparse index of row locations, e.g., it records positions of each Nth row
- * in dataset.
+ * Class maintenances sparse index of row locations inside file. It records file offset for each Nth
+ * row.
+ *
+ * <p>This class contains methods which used to find out file offset range which corresponds to some
+ * row range. Usually, these methods called with rows range computed by evaluating predicates on
+ * indexes.
  */
 public final class RowLocator {
 
@@ -19,6 +24,7 @@ public final class RowLocator {
     this.markPeriod = markPeriod;
   }
 
+  /** Add row location to index. */
   public void addRow(long rowId, long rowOffset) {
     leftToSkip--;
     if (leftToSkip <= 0) {
@@ -28,10 +34,23 @@ public final class RowLocator {
   }
 
   /**
-   * Returns offset of the row with the greatest ID less than or equal to passed ID.
+   * Returns file offsets which covers passed row range. Returned range is approximate: it can cover
+   * more rows than requested(but never less).
    */
-  public long getClosestOffset(long rowId) {
-    var entry = rowOffsets.floorEntry(rowId);
-    return entry != null ? entry.getValue() : 0;
+  public Range<Long> getClosestOffsets(Range<Long> rowRange) {
+    long lower = 0;
+    if (rowRange.hasLowerBound()) {
+      var entry = rowOffsets.floorEntry(rowRange.lowerEndpoint());
+      lower = entry != null ? entry.getValue() : 0;
+    }
+
+    long upper;
+    if (rowRange.hasUpperBound()) {
+      var entry = rowOffsets.ceilingEntry(rowRange.upperEndpoint());
+      upper = entry != null ? entry.getValue() : 0;
+      return Range.closed(lower, upper);
+    } else {
+      return Range.atLeast(lower);
+    }
   }
 }
