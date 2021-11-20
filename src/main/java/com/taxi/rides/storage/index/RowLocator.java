@@ -1,7 +1,7 @@
 package com.taxi.rides.storage.index;
 
 import com.google.common.collect.Range;
-import com.taxi.rides.storage.ColumnPredicates.Between;
+import com.taxi.rides.storage.QueryPredicate.Between;
 import com.taxi.rides.storage.schema.Column;
 import com.taxi.rides.storage.schema.datatypes.LongDataType;
 import java.util.concurrent.ThreadLocalRandom;

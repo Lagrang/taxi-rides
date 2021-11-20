@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public final class CsvStorageFile {
+public final class CsvStorageFile implements StorageFile {
 
   private final Path csvPath;
   private final Schema csvSchema;
@@ -35,8 +35,7 @@ public final class CsvStorageFile {
       Path csvPath,
       Schema expectedSchema,
       RowLocator rowLocator,
-      List<ColumnIndex> indexesToPopulate)
-      throws IOException {
+      List<ColumnIndex> indexesToPopulate) {
     this.csvPath = Objects.requireNonNull(csvPath, "CSV file path missed");
 
     try (var reader = NamedCsvReader.builder().fieldSeparator(',').build(csvPath)) {
@@ -54,10 +53,14 @@ public final class CsvStorageFile {
         columns.add(column);
       }
       this.csvSchema = new Schema(columns);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
 
     try (var reader = CsvReader.builder().fieldSeparator(',').build(csvPath)) {
       populateIndexes(reader, csvSchema, rowLocator, indexesToPopulate);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
     this.rowLocator = rowLocator;
     this.indexes = new ColumnIndexes(indexesToPopulate);
@@ -87,14 +90,15 @@ public final class CsvStorageFile {
             });
   }
 
-  public RowReader newReader(String[] requiredColumns, ColumnPredicates predicate)
+  @Override
+  public RowReader openReader(List<Column> requiredColumns, QueryPredicate predicate)
       throws IOException {
-    int[] colIdx = new int[requiredColumns.length];
+    int[] colIdx = new int[requiredColumns.size()];
     int i = 0;
-    for (String reqCol : requiredColumns) {
+    for (Column reqCol : requiredColumns) {
       int index =
           csvSchema
-              .getColumnIndex(reqCol)
+              .getColumnIndex(reqCol.name())
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(

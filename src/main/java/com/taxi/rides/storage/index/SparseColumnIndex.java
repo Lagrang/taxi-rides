@@ -2,7 +2,7 @@ package com.taxi.rides.storage.index;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
-import com.taxi.rides.storage.ColumnPredicates.Between;
+import com.taxi.rides.storage.QueryPredicate.Between;
 import com.taxi.rides.storage.schema.Column;
 import java.util.NavigableMap;
 import java.util.Objects;
