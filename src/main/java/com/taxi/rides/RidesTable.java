@@ -7,6 +7,7 @@ import com.taxi.rides.storage.QueryPredicate;
 import com.taxi.rides.storage.QueryPredicate.Between;
 import com.taxi.rides.storage.Row;
 import com.taxi.rides.storage.RowReader;
+import com.taxi.rides.storage.index.BucketColumnIndex;
 import com.taxi.rides.storage.index.MinMaxColumnIndex;
 import com.taxi.rides.storage.index.RowLocator;
 import com.taxi.rides.storage.schema.Column;
@@ -21,6 +22,7 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
@@ -96,10 +98,13 @@ public final class RidesTable implements AverageDistances {
                                       List.of(
                                           // pickup and dropoff columns are not sorted, so we can
                                           // use only min-max index
-                                          // TODO: add striped min-max and use min-max stats to
-                                          // reduce size of aggregation hash table
                                           new MinMaxColumnIndex<>(pickupDateCol),
-                                          new MinMaxColumnIndex<>(dropoffDateCol))))
+                                          new MinMaxColumnIndex<>(dropoffDateCol),
+                                          new BucketColumnIndex<>(
+                                              pickupDateCol, t -> t.truncatedTo(ChronoUnit.DAYS)),
+                                          new BucketColumnIndex<>(
+                                              dropoffDateCol,
+                                              t -> t.truncatedTo(ChronoUnit.DAYS)))))
                           .collect(Collectors.toList());
                     } catch (IOException e) {
                       throw new RuntimeException(e);

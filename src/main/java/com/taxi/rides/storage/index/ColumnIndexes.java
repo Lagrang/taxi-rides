@@ -31,16 +31,15 @@ public final class ColumnIndexes {
       return result;
     }
 
+    // here we are intersecting ranges returned by all indexes. These
+    // indexes return approximate rows range. If any two index ranges do not intersect, then
+    // there is no rows satisfying predicate. Intersection of all ranges returns the
+    // narrowest subset of rows which can satisfy predicate.
     for (Between between : predicate.between()) {
       var indexes = this.indexes.get(between.column().name());
-      // here we are intersecting ranges returned by several indexes for the same column. These
-      // indexes return approximate rows range and if any two index ranges do not intersect, then
-      // there is no rows satisfying predicate. Intersection of all ranges returns known the
-      // narrowest subset of rows which can satisfy predicate.
       for (ColumnIndex index : indexes) {
         var range = index.evaluateBetween(between);
-        result = result.intersection(range);
-        if (result.isEmpty()) {
+        if (!range.isConnected(result) || (result = result.intersection(range)).isEmpty()) {
           return result;
         }
       }

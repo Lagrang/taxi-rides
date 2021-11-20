@@ -6,6 +6,8 @@ import com.taxi.rides.storage.schema.Column;
 
 public final class MinMaxColumnIndex<T extends Comparable<? super T>> implements ColumnIndex<T> {
 
+  private static final Range<Long> EMPTY_RANGE = Range.closedOpen(0L, 0L);
+
   private final Column<T> column;
   private T min;
   private T max;
@@ -37,9 +39,10 @@ public final class MinMaxColumnIndex<T extends Comparable<? super T>> implements
       return Range.all();
     }
 
-    var intersection = Range.closed(min, max).intersection(predicate.range());
-    if (intersection.isEmpty()) {
-      return Range.open(0L, 0L);
+    var minMax = Range.closed(min, max);
+    if (!minMax.isConnected(predicate.range())
+        || minMax.intersection(predicate.range()).isEmpty()) {
+      return EMPTY_RANGE;
     }
     return Range.all();
   }
