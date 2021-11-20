@@ -2,7 +2,7 @@ package com.taxi.rides.storage.schema;
 
 import com.taxi.rides.storage.schema.datatypes.DataType;
 
-public final class Column<T extends Comparable<T>> {
+public final class Column<T extends Comparable<? super T>> {
 
   private final String name;
   private final DataType<T> columnType;

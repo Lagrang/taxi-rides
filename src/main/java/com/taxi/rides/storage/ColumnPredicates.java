@@ -7,7 +7,7 @@ import java.util.Optional;
 public final class ColumnPredicates {
   private final Between between;
 
-  public <T extends Comparable<T>> ColumnPredicates(Between<T> between) {
+  public <T extends Comparable<? super T>> ColumnPredicates(Between<T> between) {
     this.between = between;
   }
 
@@ -15,5 +15,5 @@ public final class ColumnPredicates {
     return Optional.ofNullable(between);
   }
 
-  public record Between<T extends Comparable<T>>(Column<T> column, Range<T> range) {}
+  public record Between<T extends Comparable<? super T>>(Column<T> column, Range<T> range) {}
 }

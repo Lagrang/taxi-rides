@@ -4,7 +4,7 @@ import com.google.common.collect.Range;
 import com.taxi.rides.storage.ColumnPredicates.Between;
 import com.taxi.rides.storage.schema.Column;
 
-public final class MinMaxColumnIndex<T extends Comparable<T>> implements ColumnIndex<T> {
+public final class MinMaxColumnIndex<T extends Comparable<? super T>> implements ColumnIndex<T> {
 
   private final Column<T> column;
   private T min;

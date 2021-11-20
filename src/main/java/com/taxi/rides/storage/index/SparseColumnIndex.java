@@ -12,7 +12,7 @@ import java.util.TreeMap;
  * Class maintenances sparse index of values, e.g. it records value location(e.g., row ID) for each
  * Nth value.
  */
-public class SparseColumnIndex<T extends Comparable<T>> implements ColumnIndex<T> {
+public class SparseColumnIndex<T extends Comparable<? super T>> implements ColumnIndex<T> {
 
   private final NavigableMap<T, Long> rowOffsets = new TreeMap<>();
   private final Column column;

@@ -11,7 +11,7 @@ import com.taxi.rides.storage.schema.Column;
  *
  * @param <T>
  */
-public interface ColumnIndex<T extends Comparable<T>> {
+public interface ColumnIndex<T extends Comparable<? super T>> {
 
   /** Metadata for column for which this index created. */
   Column<T> column();
