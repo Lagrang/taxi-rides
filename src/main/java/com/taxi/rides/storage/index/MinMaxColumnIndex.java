@@ -22,14 +22,14 @@ public final class MinMaxColumnIndex<T extends Comparable<T>> implements ColumnI
   }
 
   @Override
-  public void addEntry(long rowId, T value) {
+  public void addEntry(long rowId, T colValue) {
     // TODO: this is hot method during index building, try to use less branches here
-    if (min == null || value.compareTo(min) < 0) {
-      min = value;
+    if (min == null || colValue.compareTo(min) < 0) {
+      min = colValue;
       minRow = rowId;
     }
-    if (max == null || value.compareTo(max) > 0) {
-      max = value;
+    if (max == null || colValue.compareTo(max) > 0) {
+      max = colValue;
       maxRow = rowId;
     }
   }

@@ -78,7 +78,7 @@ public final class CsvStorageFile {
         .iterator()
         .forEachRemaining(
             row -> {
-              rowLocator.addRow(row.getOriginalLineNumber(), row.getStartingOffset());
+              rowLocator.addEntry(row.getOriginalLineNumber(), row.getStartingOffset());
               for (IndexState indexState : indexes) {
                 var rawColVal = row.getField(indexState.columnIndex);
                 var colValue = indexState.index.column().dataType().parseFrom(rawColVal);

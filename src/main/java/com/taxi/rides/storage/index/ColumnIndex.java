@@ -20,9 +20,9 @@ public interface ColumnIndex<T extends Comparable<T>> {
    * Add new index entry for row's column.
    *
    * @param rowId Row ID
-   * @param value Column value.
+   * @param colValue Column value.
    */
-  void addEntry(long rowId, T value);
+  void addEntry(long rowId, T colValue);
 
   /**
    * Evaluate passed predicate and returns range of row IDs which can satisfy to predicate
