@@ -1,12 +1,13 @@
 package com.taxi.rides.storage;
 
+import com.google.common.collect.Range;
 import com.taxi.rides.storage.schema.Column;
 import java.util.Optional;
 
-public final class ColumnPredicate {
+public final class ColumnPredicates {
   private final Between between;
 
-  public <T extends Comparable<T>> ColumnPredicate(Between<T> between) {
+  public <T extends Comparable<T>> ColumnPredicates(Between<T> between) {
     this.between = between;
   }
 
@@ -14,5 +15,5 @@ public final class ColumnPredicate {
     return Optional.ofNullable(between);
   }
 
-  public record Between<T extends Comparable<T>>(Column<T> column, T from, T till) {}
+  public record Between<T extends Comparable<T>>(Column<T> column, Range<T> range) {}
 }

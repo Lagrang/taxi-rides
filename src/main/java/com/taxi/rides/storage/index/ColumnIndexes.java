@@ -3,7 +3,7 @@ package com.taxi.rides.storage.index;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Range;
-import com.taxi.rides.storage.ColumnPredicate;
+import com.taxi.rides.storage.ColumnPredicates;
 import java.util.List;
 
 public final class ColumnIndexes {
@@ -24,7 +24,7 @@ public final class ColumnIndexes {
    * @param predicate Column predicate
    * @return Range of row's IDs.
    */
-  public Range<Long> evaluate(ColumnPredicate predicate) {
+  public Range<Long> evaluate(ColumnPredicates predicate) {
     // currently, only 1 predicate type supported
     if (predicate.between().isEmpty()) {
       return Range.all();

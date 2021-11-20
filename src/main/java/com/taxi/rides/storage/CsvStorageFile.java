@@ -87,7 +87,7 @@ public final class CsvStorageFile {
             });
   }
 
-  public RowReader newReader(String[] requiredColumns, ColumnPredicate predicate)
+  public RowReader newReader(String[] requiredColumns, ColumnPredicates predicate)
       throws IOException {
     int[] colIdx = new int[requiredColumns.length];
     int i = 0;

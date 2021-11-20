@@ -1,7 +1,7 @@
 package com.taxi.rides.storage.index;
 
 import com.google.common.collect.Range;
-import com.taxi.rides.storage.ColumnPredicate;
+import com.taxi.rides.storage.ColumnPredicates;
 import com.taxi.rides.storage.schema.Column;
 
 /**
@@ -31,5 +31,5 @@ public interface ColumnIndex<T extends Comparable<T>> {
    * @param predicate Between predicate.
    * @return
    */
-  Range<Long> evaluateBetween(ColumnPredicate.Between<T> predicate);
+  Range<Long> evaluateBetween(ColumnPredicates.Between<T> predicate);
 }
