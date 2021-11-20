@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -58,7 +59,9 @@ public final class CsvStorageFile implements StorageFile {
     }
 
     try (var reader = CsvReader.builder().fieldSeparator(',').build(csvPath)) {
-      populateIndexes(reader, csvSchema, rowLocator, indexesToPopulate);
+      var iterator = reader.iterator();
+      iterator.next(); // skip CSV header
+      populateIndexes(iterator, csvSchema, rowLocator, indexesToPopulate);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -67,7 +70,10 @@ public final class CsvStorageFile implements StorageFile {
   }
 
   private static void populateIndexes(
-      CsvReader reader, Schema schema, RowLocator rowLocator, List<ColumnIndex> indexesToPopulate) {
+      Iterator<CsvRow> reader,
+      Schema schema,
+      RowLocator rowLocator,
+      List<ColumnIndex> indexesToPopulate) {
 
     // compute for each index, where required column located inside CSV row(e.g., column index)
     var indexes =
@@ -77,17 +83,15 @@ public final class CsvStorageFile implements StorageFile {
                     new IndexState(index, schema.getColumnIndex(index.column().name()).getAsInt()))
             .collect(Collectors.toList());
 
-    reader
-        .iterator()
-        .forEachRemaining(
-            row -> {
-              rowLocator.addEntry(row.getOriginalLineNumber(), row.getStartingOffset());
-              for (IndexState indexState : indexes) {
-                var rawColVal = row.getField(indexState.columnIndex);
-                var colValue = indexState.index.column().dataType().parseFrom(rawColVal);
-                indexState.index.addEntry(row.getOriginalLineNumber(), colValue);
-              }
-            });
+    reader.forEachRemaining(
+        row -> {
+          rowLocator.addEntry(row.getOriginalLineNumber(), row.getStartingOffset());
+          for (IndexState indexState : indexes) {
+            var rawColVal = row.getField(indexState.columnIndex);
+            var colValue = indexState.index.column().dataType().parseFrom(rawColVal);
+            indexState.index.addEntry(row.getOriginalLineNumber(), colValue);
+          }
+        });
   }
 
   @Override
@@ -107,6 +111,9 @@ public final class CsvStorageFile implements StorageFile {
     }
 
     Range<Long> rowsRange = indexes.evaluate(predicate);
+    if (rowsRange.isEmpty()) {
+      return RowReader.empty(new Schema(requiredColumns));
+    }
     Range<Long> rowOffsets = rowLocator.getClosestOffsets(rowsRange);
     return new CsvIter(colIdx, rowOffsets);
   }
@@ -160,10 +167,11 @@ public final class CsvStorageFile implements StorageFile {
       var result = new Row(colIdx.length);
       var row = rowIter.next();
       lastSeenOffset = row.getStartingOffset();
+      int outputSchemaIdx = 0;
       for (int idx : colIdx) {
         String rawVal = row.getField(idx);
         var columnValue = csvSchema.getColumnAt(idx).dataType().parseFrom(rawVal);
-        result.set(idx, columnValue);
+        result.set(outputSchemaIdx++, columnValue);
       }
       return result;
     }

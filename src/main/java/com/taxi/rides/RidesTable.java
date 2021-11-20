@@ -1,7 +1,7 @@
 package com.taxi.rides;
 
 import com.google.common.collect.Range;
-import com.taxi.rides.query.aggregations.DoubleAvgAggregation;
+import com.taxi.rides.query.aggregations.FloatAvgAggregation;
 import com.taxi.rides.storage.CsvStorageFile;
 import com.taxi.rides.storage.QueryPredicate;
 import com.taxi.rides.storage.QueryPredicate.Between;
@@ -69,10 +69,10 @@ public final class RidesTable implements AverageDistances {
     avgDistColumns = List.of(passengerCountCol, tripDistanceCol);
   }
 
-  private static HashMap<Byte, DoubleAvgAggregation> mergeGroupbyMaps(
-      HashMap<Byte, DoubleAvgAggregation> m1, HashMap<Byte, DoubleAvgAggregation> m2) {
+  private static HashMap<Byte, FloatAvgAggregation> mergeGroupbyMaps(
+      HashMap<Byte, FloatAvgAggregation> m1, HashMap<Byte, FloatAvgAggregation> m2) {
     var res = new HashMap<>(m1);
-    m2.forEach((k, v) -> res.merge(k, v, DoubleAvgAggregation::merge));
+    m2.forEach((k, v) -> res.merge(k, v, FloatAvgAggregation::merge));
     return res;
   }
 
@@ -86,7 +86,16 @@ public final class RidesTable implements AverageDistances {
                     try (var files = Files.walk(dataDir, FileVisitOption.FOLLOW_LINKS)) {
                       return files
                           .parallel()
-                          .filter(Files::isRegularFile)
+                          .filter(
+                              path -> {
+                                try {
+                                  return Files.isRegularFile(path)
+                                      && !Files.isHidden(path)
+                                      && !Files.isExecutable(path);
+                                } catch (IOException e) {
+                                  throw new RuntimeException(e);
+                                }
+                              })
                           .map(
                               path ->
                                   new CsvStorageFile(
@@ -96,7 +105,8 @@ public final class RidesTable implements AverageDistances {
                                       List.of(
                                           // pickup and dropoff columns are not sorted, so we can
                                           // use only min-max index
-                                          // TODO: add striped min-max
+                                          // TODO: add striped min-max and use min-max stats to
+                                          // reduce size of aggregation hash table
                                           new MinMaxColumnIndex<>(pickupDateCol),
                                           new MinMaxColumnIndex<>(dropoffDateCol))))
                           .collect(Collectors.toList());
@@ -142,7 +152,7 @@ public final class RidesTable implements AverageDistances {
                             RidesTable::mergeGroupbyMaps);
 
                 var res = new HashMap<Integer, Double>();
-                merged.forEach((k, v) -> res.put((int) k, v.computeResult()));
+                merged.forEach((k, v) -> res.put((int) k, (double) v.computeResult()));
                 return res;
               })
           .get();
@@ -151,16 +161,18 @@ public final class RidesTable implements AverageDistances {
     }
   }
 
-  private HashMap<Byte, DoubleAvgAggregation> aggregate(RowReader rowReader) {
+  private HashMap<Byte, FloatAvgAggregation> aggregate(RowReader rowReader) {
     int countIdx = rowReader.schema().getColumnIndex(passengerCountCol.name()).getAsInt();
     int distIdx = rowReader.schema().getColumnIndex(tripDistanceCol.name()).getAsInt();
-
-    var groupby = new HashMap<Byte, DoubleAvgAggregation>();
+    // TODO: use 'primitive' hash map from agrona lib
+    var groupby = new HashMap<Byte, FloatAvgAggregation>();
     while (rowReader.hasNext()) {
       Row row = rowReader.next();
-      groupby
-          .computeIfAbsent((Byte) row.get(countIdx), key -> new DoubleAvgAggregation())
-          .add((Double) row.get(distIdx));
+      var passangerCnt = (Byte) row.get(countIdx);
+      var distance = (Float) row.get(distIdx);
+      if (passangerCnt != null && distance != null) {
+        groupby.computeIfAbsent(passangerCnt, key -> new FloatAvgAggregation()).add(distance);
+      }
     }
     return groupby;
   }
@@ -172,8 +184,25 @@ public final class RidesTable implements AverageDistances {
   }
 
   public static class Settings {
-    final int initThreads = 1;
-    final int executionThreads = Runtime.getRuntime().availableProcessors();
-    final int skipIndexStep = 8192;
+    int initThreads = Runtime.getRuntime().availableProcessors();
+    int executionThreads = Runtime.getRuntime().availableProcessors() * 2;
+    int skipIndexStep = 8192;
+
+    public Settings() {}
+
+    public Settings(int initThreads) {
+      this.initThreads = initThreads;
+    }
+
+    public Settings(int initThreads, int executionThreads) {
+      this.initThreads = initThreads;
+      this.executionThreads = executionThreads;
+    }
+
+    public Settings(int initThreads, int executionThreads, int skipIndexStep) {
+      this.initThreads = initThreads;
+      this.executionThreads = executionThreads;
+      this.skipIndexStep = skipIndexStep;
+    }
   }
 }

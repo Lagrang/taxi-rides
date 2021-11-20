@@ -45,6 +45,6 @@ public final class MinMaxColumnIndex<T extends Comparable<? super T>> implements
     if (intersection.isEmpty()) {
       return Range.open(0L, 0L);
     }
-    return Range.closed(minRow, maxRow);
+    return Range.all();
   }
 }

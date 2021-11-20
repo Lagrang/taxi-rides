@@ -1,9 +1,9 @@
 package com.taxi.rides.storage.schema.datatypes;
 
-public class ShortDataType implements DataType<Short> {
+public class ShortDataType extends AbstractDataType<Short> {
 
   @Override
-  public Short parseFrom(String rawValue) {
+  public Short parseRawValue(String rawValue) {
     return Short.parseShort(rawValue.trim());
   }
 }
