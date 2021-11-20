@@ -11,7 +11,6 @@ import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
 import de.siegmar.fastcsv.reader.NamedCsvReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -58,9 +57,8 @@ public final class CsvStorageFile implements StorageFile {
       throw new RuntimeException(e);
     }
 
-    try (var reader = CsvReader.builder().fieldSeparator(',').build(csvPath)) {
-      var iterator = reader.iterator();
-      iterator.next(); // skip CSV header
+    try (var reader = CsvReader.builder().fieldSeparator(',').build(csvPath);
+        var iterator = reader.iterator()) {
       populateIndexes(iterator, csvSchema, rowLocator, indexesToPopulate);
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -75,6 +73,10 @@ public final class CsvStorageFile implements StorageFile {
       RowLocator rowLocator,
       List<ColumnIndex> indexesToPopulate) {
 
+    if (indexesToPopulate.isEmpty()) {
+      return;
+    }
+
     // compute for each index, where required column located inside CSV row(e.g., column index)
     var indexes =
         indexesToPopulate.stream()
@@ -83,13 +85,16 @@ public final class CsvStorageFile implements StorageFile {
                     new IndexState(index, schema.getColumnIndex(index.column().name()).getAsInt()))
             .collect(Collectors.toList());
 
+    reader.next(); // skip CSV header
     reader.forEachRemaining(
         row -> {
-          rowLocator.addEntry(row.getOriginalLineNumber(), row.getStartingOffset());
+          // row ID will start from 0: ordinal number starts from 1, and it accounts header line
+          long rowId = row.getOriginalLineNumber() - 2;
+          rowLocator.addEntry(rowId, row.getStartingOffset());
           for (IndexState indexState : indexes) {
             var rawColVal = row.getField(indexState.columnIndex);
             var colValue = indexState.index.column().dataType().parseFrom(rawColVal);
-            indexState.index.addEntry(row.getOriginalLineNumber(), colValue);
+            indexState.index.addEntry(rowId, colValue);
           }
         });
   }
@@ -127,8 +132,8 @@ public final class CsvStorageFile implements StorageFile {
     private final CloseableIterator<CsvRow> rowIter;
     private final int[] colIdx;
     private final SeekableByteChannel fileChannel;
-    private final Reader fileReader;
-    private final long lastRowOffset;
+    private final long startRowOffset;
+    private final long endRowOffset;
     private long lastSeenOffset;
 
     public CsvIter(int[] colIdx, Range<Long> offsets) throws IOException {
@@ -136,15 +141,22 @@ public final class CsvStorageFile implements StorageFile {
       fileChannel = Files.newByteChannel(csvPath, StandardOpenOption.READ);
       if (offsets.hasLowerBound()) {
         fileChannel.position(offsets.lowerEndpoint());
+        startRowOffset = offsets.lowerEndpoint();
+      } else {
+        startRowOffset = 0;
       }
       if (offsets.hasUpperBound()) {
-        lastRowOffset = offsets.upperEndpoint();
+        endRowOffset = offsets.upperEndpoint();
       } else {
-        lastRowOffset = fileChannel.size();
+        endRowOffset = fileChannel.size();
       }
-      fileReader = Channels.newReader(fileChannel, StandardCharsets.UTF_8);
-      csvReader = CsvReader.builder().build(fileReader);
+      csvReader =
+          CsvReader.builder().build(Channels.newReader(fileChannel, StandardCharsets.UTF_8));
       rowIter = csvReader.iterator();
+      if (startRowOffset == 0) {
+        // we start from beginning of CSV file and should skip header
+        rowIter.next();
+      }
       readerSchema =
           new Schema(
               Arrays.stream(colIdx).mapToObj(csvSchema::getColumnAt).collect(Collectors.toList()));
@@ -153,13 +165,12 @@ public final class CsvStorageFile implements StorageFile {
     @Override
     public void close() throws Exception {
       fileChannel.close();
-      fileReader.close();
       csvReader.close();
     }
 
     @Override
     public boolean hasNext() {
-      return lastRowOffset > lastSeenOffset && rowIter.hasNext();
+      return endRowOffset > startRowOffset + lastSeenOffset && rowIter.hasNext();
     }
 
     @Override

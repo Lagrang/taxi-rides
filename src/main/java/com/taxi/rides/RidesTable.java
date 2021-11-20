@@ -66,7 +66,7 @@ public final class RidesTable implements AverageDistances {
                 new Column<>("improvement_surcharge", new FloatDataType()),
                 new Column<>("total_amount", new FloatDataType()),
                 new Column<>("congestion_surcharge", new FloatDataType())));
-    avgDistColumns = List.of(passengerCountCol, tripDistanceCol);
+    avgDistColumns = List.of(pickupDateCol, dropoffDateCol, passengerCountCol, tripDistanceCol);
   }
 
   private static HashMap<Byte, FloatAvgAggregation> mergeGroupbyMaps(
@@ -86,16 +86,7 @@ public final class RidesTable implements AverageDistances {
                     try (var files = Files.walk(dataDir, FileVisitOption.FOLLOW_LINKS)) {
                       return files
                           .parallel()
-                          .filter(
-                              path -> {
-                                try {
-                                  return Files.isRegularFile(path)
-                                      && !Files.isHidden(path)
-                                      && !Files.isExecutable(path);
-                                } catch (IOException e) {
-                                  throw new RuntimeException(e);
-                                }
-                              })
+                          .filter(RidesTable::isCsvFile)
                           .map(
                               path ->
                                   new CsvStorageFile(
@@ -123,8 +114,20 @@ public final class RidesTable implements AverageDistances {
     }
   }
 
+  private static boolean isCsvFile(Path path) {
+    try {
+      return Files.isRegularFile(path)
+          && !Files.isHidden(path)
+          && !Files.isExecutable(path)
+          && path.getFileName().toString().endsWith(".csv");
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   public HashMap<Integer, Double> getAverageDistances(LocalDateTime start, LocalDateTime end) {
+    var timeRange = Range.closed(start, end);
     var predicate =
         QueryPredicate.allMatches(
             List.of(
@@ -145,7 +148,7 @@ public final class RidesTable implements AverageDistances {
                                 throw new RuntimeException(e);
                               }
                             })
-                        .map(this::aggregate)
+                        .map(rowReader -> aggregate(rowReader, timeRange))
                         .reduce(
                             new HashMap<>(),
                             RidesTable::mergeGroupbyMaps,
@@ -161,19 +164,29 @@ public final class RidesTable implements AverageDistances {
     }
   }
 
-  private HashMap<Byte, FloatAvgAggregation> aggregate(RowReader rowReader) {
+  private HashMap<Byte, FloatAvgAggregation> aggregate(
+      RowReader rowReader, Range<LocalDateTime> timeRange) {
     int countIdx = rowReader.schema().getColumnIndex(passengerCountCol.name()).getAsInt();
     int distIdx = rowReader.schema().getColumnIndex(tripDistanceCol.name()).getAsInt();
+    int startTimeIdx = rowReader.schema().getColumnIndex(pickupDateCol.name()).getAsInt();
+    int endTimeIdx = rowReader.schema().getColumnIndex(dropoffDateCol.name()).getAsInt();
     // TODO: use 'primitive' hash map from agrona lib
     var groupby = new HashMap<Byte, FloatAvgAggregation>();
+    int count = 0;
     while (rowReader.hasNext()) {
+      count++;
       Row row = rowReader.next();
-      var passangerCnt = (Byte) row.get(countIdx);
-      var distance = (Float) row.get(distIdx);
-      if (passangerCnt != null && distance != null) {
-        groupby.computeIfAbsent(passangerCnt, key -> new FloatAvgAggregation()).add(distance);
+      var start = (LocalDateTime) row.get(startTimeIdx);
+      var end = (LocalDateTime) row.get(endTimeIdx);
+      if (timeRange.contains(start) && timeRange.contains(end)) {
+        var passangerCnt = (Byte) row.get(countIdx);
+        var distance = (Float) row.get(distIdx);
+        if (passangerCnt != null && distance != null) {
+          groupby.computeIfAbsent(passangerCnt, key -> new FloatAvgAggregation()).add(distance);
+        }
       }
     }
+    System.out.println("CSV read rows: " + count);
     return groupby;
   }
 
@@ -185,8 +198,8 @@ public final class RidesTable implements AverageDistances {
 
   public static class Settings {
     int initThreads = Runtime.getRuntime().availableProcessors();
-    int executionThreads = Runtime.getRuntime().availableProcessors() * 2;
-    int skipIndexStep = 8192;
+    int executionThreads = Runtime.getRuntime().availableProcessors();
+    int skipIndexStep = 8 * 1024;
 
     public Settings() {}
 

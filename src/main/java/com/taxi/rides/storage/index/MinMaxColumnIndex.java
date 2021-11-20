@@ -8,9 +8,7 @@ public final class MinMaxColumnIndex<T extends Comparable<? super T>> implements
 
   private final Column<T> column;
   private T min;
-  private long minRow;
   private T max;
-  private long maxRow;
 
   public MinMaxColumnIndex(Column<T> column) {
     this.column = column;
@@ -26,11 +24,9 @@ public final class MinMaxColumnIndex<T extends Comparable<? super T>> implements
     // TODO: this is hot method during index building, try to use less branches here
     if (min == null || colValue.compareTo(min) < 0) {
       min = colValue;
-      minRow = rowId;
     }
     if (max == null || colValue.compareTo(max) > 0) {
       max = colValue;
-      maxRow = rowId;
     }
   }
 
