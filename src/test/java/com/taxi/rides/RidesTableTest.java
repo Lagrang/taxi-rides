@@ -5,6 +5,7 @@ package com.taxi.rides;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.common.base.StandardSystemProperty;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Comparators;
 import com.taxi.rides.RidesTable.Settings;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.atomic.LongAdder;
 import org.assertj.core.data.Offset;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
@@ -28,11 +30,12 @@ class RidesTableTest {
   private static final DateTimeFormatter DATE_FORMATTER =
       new DateTimeFormatterBuilder().appendPattern("yyyy-MM-dd HH:mm:ss").toFormatter();
 
+  @Disabled
   @Test
   void testAvgDistances1() {
     var table = new RidesTable(new Settings());
     var sw = Stopwatch.createStarted();
-    table.init(Paths.get("/home/lagrang/Downloads/trip_data"));
+    table.init(Paths.get(StandardSystemProperty.USER_HOME.value() + "/Downloads/trip_data"));
     System.out.println("Init time: " + sw.elapsed(TimeUnit.SECONDS));
     sw.reset();
 
@@ -98,7 +101,7 @@ class RidesTableTest {
             "improvement_surcharge",
             "total_amount",
             "congestion_surcharge");
-        for (int j = 0; j < 1000; j++) {
+        for (int j = 0; j < 5000; j++) {
           int psgCnt = ThreadLocalRandom.current().nextInt(0, 9);
           double dist = ThreadLocalRandom.current().nextDouble(0.1, 4.5);
 
@@ -135,18 +138,18 @@ class RidesTableTest {
       }
     }
 
+    expected.forEach((k, v) -> System.out.println(k + " : " + v));
     var table = new RidesTable(new Settings());
     table.init(csvDir);
     var res = table.getAverageDistances(queryStartTs, queryEndTs);
     expected.forEach(
-        (psgCnt, avgState) -> {
-          assertThat(res.get(psgCnt))
-              .isNotNull()
-              .satisfies(
-                  val ->
-                      assertThat(avgState.sum.doubleValue() / avgState.count.doubleValue())
-                          .isCloseTo(val, Offset.offset(0.000001)));
-        });
+        (psgCnt, avgState) ->
+            assertThat(res.get(psgCnt))
+                .isNotNull()
+                .satisfies(
+                    val ->
+                        assertThat(avgState.sum.doubleValue() / avgState.count.doubleValue())
+                            .isCloseTo(val, Offset.offset(0.00000001))));
   }
 
   record AvgState(DoubleAdder sum, LongAdder count) {}

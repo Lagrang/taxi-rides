@@ -1,7 +1,7 @@
 package com.taxi.rides;
 
 import com.google.common.collect.Range;
-import com.taxi.rides.query.aggregations.FloatAvgAggregation;
+import com.taxi.rides.query.aggregations.DoubleAvgAggregation;
 import com.taxi.rides.storage.CsvStorageFile;
 import com.taxi.rides.storage.QueryPredicate;
 import com.taxi.rides.storage.QueryPredicate.Between;
@@ -14,6 +14,7 @@ import com.taxi.rides.storage.index.RowOffsetLocator;
 import com.taxi.rides.storage.schema.Column;
 import com.taxi.rides.storage.schema.Schema;
 import com.taxi.rides.storage.schema.datatypes.ByteDataType;
+import com.taxi.rides.storage.schema.datatypes.DoubleDataType;
 import com.taxi.rides.storage.schema.datatypes.FloatDataType;
 import com.taxi.rides.storage.schema.datatypes.ShortDataType;
 import com.taxi.rides.storage.schema.datatypes.StringDataType;
@@ -37,7 +38,7 @@ public final class RidesTable implements AverageDistances {
   private final Column<LocalDateTime> pickupDateCol;
   private final Column<LocalDateTime> dropoffDateCol;
   private final Column<Byte> passengerCountCol;
-  private final Column<Float> tripDistanceCol;
+  private final Column<Double> tripDistanceCol;
   private final List<Column> avgDistColumns;
   private List<CsvStorageFile> csvFiles;
 
@@ -47,7 +48,7 @@ public final class RidesTable implements AverageDistances {
     pickupDateCol = new Column<>("tpep_pickup_datetime", new TimestampDataType());
     dropoffDateCol = new Column<>("tpep_dropoff_datetime", new TimestampDataType());
     passengerCountCol = new Column<>("passenger_count", new ByteDataType());
-    tripDistanceCol = new Column<>("trip_distance", new FloatDataType());
+    tripDistanceCol = new Column<>("trip_distance", new DoubleDataType());
     csvSchema =
         new Schema(
             List.of(
@@ -72,10 +73,10 @@ public final class RidesTable implements AverageDistances {
     avgDistColumns = List.of(pickupDateCol, dropoffDateCol, passengerCountCol, tripDistanceCol);
   }
 
-  private static HashMap<Byte, FloatAvgAggregation> mergeGroupbyMaps(
-      HashMap<Byte, FloatAvgAggregation> m1, HashMap<Byte, FloatAvgAggregation> m2) {
+  private static HashMap<Byte, DoubleAvgAggregation> mergeGroupbyMaps(
+      HashMap<Byte, DoubleAvgAggregation> m1, HashMap<Byte, DoubleAvgAggregation> m2) {
     var res = new HashMap<>(m1);
-    m2.forEach((k, v) -> res.merge(k, v, FloatAvgAggregation::merge));
+    m2.forEach((k, v) -> res.merge(k, v, DoubleAvgAggregation::merge));
     return res;
   }
 
@@ -158,7 +159,8 @@ public final class RidesTable implements AverageDistances {
                             RidesTable::mergeGroupbyMaps);
 
                 var res = new HashMap<Integer, Double>();
-                merged.forEach((k, v) -> res.put((int) k, (double) v.computeResult()));
+                merged.forEach((k, v) -> System.out.println(k + " : " + v));
+                merged.forEach((k, v) -> res.put((int) k, v.computeResult()));
                 return res;
               })
           .get();
@@ -175,14 +177,14 @@ public final class RidesTable implements AverageDistances {
     }
   }
 
-  private HashMap<Byte, FloatAvgAggregation> aggregate(
+  private HashMap<Byte, DoubleAvgAggregation> aggregate(
       RowReader rowReader, Range<LocalDateTime> timeRange) {
     int countIdx = rowReader.schema().getColumnIndex(passengerCountCol.name()).getAsInt();
     int distIdx = rowReader.schema().getColumnIndex(tripDistanceCol.name()).getAsInt();
     int startTimeIdx = rowReader.schema().getColumnIndex(pickupDateCol.name()).getAsInt();
     int endTimeIdx = rowReader.schema().getColumnIndex(dropoffDateCol.name()).getAsInt();
     // TODO: use 'primitive' hash map from agrona lib
-    var groupby = new HashMap<Byte, FloatAvgAggregation>();
+    var groupby = new HashMap<Byte, DoubleAvgAggregation>();
     int count = 0;
     while (rowReader.hasNext()) {
       count++;
@@ -191,9 +193,9 @@ public final class RidesTable implements AverageDistances {
       var end = (LocalDateTime) row.get(endTimeIdx);
       if (timeRange.contains(start) && timeRange.contains(end)) {
         var passengerCnt = (Byte) row.get(countIdx);
-        var distance = (Float) row.get(distIdx);
+        var distance = (Double) row.get(distIdx);
         if (passengerCnt != null && distance != null) {
-          groupby.computeIfAbsent(passengerCnt, key -> new FloatAvgAggregation()).add(distance);
+          groupby.computeIfAbsent(passengerCnt, key -> new DoubleAvgAggregation()).add(distance);
         }
       }
     }
