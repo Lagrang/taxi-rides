@@ -14,11 +14,11 @@ import java.util.concurrent.ThreadLocalRandom;
  * row range. Usually, these methods called with rows range computed by evaluating predicates on
  * indexes.
  */
-public final class RowLocator {
+public final class RowOffsetLocator {
 
   private final SparseColumnIndex<Long> index;
 
-  public RowLocator(int markPeriod) {
+  public RowOffsetLocator(int markPeriod) {
     index =
         new SparseColumnIndex<>(
             new Column<>("__row_id__" + ThreadLocalRandom.current().nextLong(), new LongDataType()),

@@ -17,6 +17,14 @@ public interface ColumnIndex<T extends Comparable<? super T>> {
   Column<T> column();
 
   /**
+   * Return value which defines 'priority' of this index. Index with less priority ({@link
+   * Priority#priotity()}) value should be evaluated first. This will ensure that indexes with less
+   * granularity(for instance, min-max index) will be examined first and let to skip file without
+   * checking more involved indexes for same file.
+   */
+  Priority order();
+
+  /**
    * Add new index entry for row's column.
    *
    * @param rowId Row ID
@@ -32,4 +40,20 @@ public interface ColumnIndex<T extends Comparable<? super T>> {
    * @return
    */
   Range<Long> evaluateBetween(QueryPredicate.Between<T> predicate);
+
+  enum Priority {
+    HIGH(0),
+    LOW(1),
+    ;
+
+    private final int priotity;
+
+    Priority(int priotity) {
+      this.priotity = priotity;
+    }
+
+    public int priotity() {
+      return priotity;
+    }
+  }
 }

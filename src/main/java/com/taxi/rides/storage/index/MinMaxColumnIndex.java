@@ -22,6 +22,11 @@ public final class MinMaxColumnIndex<T extends Comparable<? super T>> implements
   }
 
   @Override
+  public Priority order() {
+    return Priority.HIGH;
+  }
+
+  @Override
   public void addEntry(long rowId, T colValue) {
     // TODO: this is hot method during index building, try to use less branches here
     if (min == null || colValue.compareTo(min) < 0) {

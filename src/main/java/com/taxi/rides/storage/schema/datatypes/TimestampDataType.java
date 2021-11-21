@@ -7,7 +7,7 @@ public class TimestampDataType extends AbstractDataType<LocalDateTime> {
   @Override
   public LocalDateTime parseRawValue(String rawValue) {
     // parse string of format 'yyyy-MM-dd H:m:s' manually, this is more performant than
-    // LocalDatetime.parse(str, FORMATTER) or pattern matching variant.
+    // LocalDatetime.parse(str, FORMATTER) or regex.
     return LocalDateTime.of(
         Integer.parseInt(rawValue.substring(0, 4)),
         Integer.parseInt(rawValue.substring(5, 7)),

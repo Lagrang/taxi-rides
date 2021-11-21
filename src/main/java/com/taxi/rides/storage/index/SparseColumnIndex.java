@@ -34,6 +34,11 @@ public class SparseColumnIndex<T extends Comparable<? super T>> implements Colum
   }
 
   @Override
+  public Priority order() {
+    return Priority.LOW;
+  }
+
+  @Override
   public void addEntry(long rowId, T colValue) {
     leftToSkip--;
     maxSeenValue = maxSeenValue == null ? colValue : Comparators.max(maxSeenValue, colValue);

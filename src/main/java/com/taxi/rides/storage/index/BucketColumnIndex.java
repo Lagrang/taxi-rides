@@ -57,6 +57,11 @@ public class BucketColumnIndex<T extends Comparable<? super T>, B extends Compar
   }
 
   @Override
+  public Priority order() {
+    return Priority.LOW;
+  }
+
+  @Override
   public void addEntry(long rowId, T colValue) {
     var bucket = getBucketId.apply(colValue);
     index.compute(

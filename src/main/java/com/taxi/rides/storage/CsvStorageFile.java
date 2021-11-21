@@ -3,7 +3,7 @@ package com.taxi.rides.storage;
 import com.google.common.collect.Range;
 import com.taxi.rides.storage.index.ColumnIndex;
 import com.taxi.rides.storage.index.ColumnIndexes;
-import com.taxi.rides.storage.index.RowLocator;
+import com.taxi.rides.storage.index.RowOffsetLocator;
 import com.taxi.rides.storage.schema.Column;
 import com.taxi.rides.storage.schema.Schema;
 import de.siegmar.fastcsv.reader.CloseableIterator;
@@ -28,13 +28,13 @@ public final class CsvStorageFile implements StorageFile {
 
   private final Path csvPath;
   private final Schema csvSchema;
-  private final RowLocator rowLocator;
+  private final RowOffsetLocator rowLocator;
   private final ColumnIndexes indexes;
 
   public CsvStorageFile(
       Path csvPath,
       Schema expectedSchema,
-      RowLocator rowLocator,
+      RowOffsetLocator rowLocator,
       List<ColumnIndex> indexesToPopulate) {
     this.csvPath = Objects.requireNonNull(csvPath, "CSV file path missed");
 
@@ -70,7 +70,7 @@ public final class CsvStorageFile implements StorageFile {
   private static void populateIndexes(
       Iterator<CsvRow> reader,
       Schema schema,
-      RowLocator rowLocator,
+      RowOffsetLocator rowLocator,
       List<ColumnIndex> indexesToPopulate) {
 
     if (indexesToPopulate.isEmpty()) {

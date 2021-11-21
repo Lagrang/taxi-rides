@@ -8,8 +8,9 @@ import com.taxi.rides.storage.QueryPredicate.Between;
 import com.taxi.rides.storage.Row;
 import com.taxi.rides.storage.RowReader;
 import com.taxi.rides.storage.index.BucketColumnIndex;
+import com.taxi.rides.storage.index.ColumnIndex;
 import com.taxi.rides.storage.index.MinMaxColumnIndex;
-import com.taxi.rides.storage.index.RowLocator;
+import com.taxi.rides.storage.index.RowOffsetLocator;
 import com.taxi.rides.storage.schema.Column;
 import com.taxi.rides.storage.schema.Schema;
 import com.taxi.rides.storage.schema.datatypes.ByteDataType;
@@ -90,21 +91,21 @@ public final class RidesTable implements AverageDistances {
                           .parallel()
                           .filter(RidesTable::isCsvFile)
                           .map(
-                              path ->
-                                  new CsvStorageFile(
-                                      path,
-                                      csvSchema,
-                                      new RowLocator(settings.skipIndexStep),
-                                      List.of(
-                                          // pickup and dropoff columns are not sorted, so we can
-                                          // use only min-max index
-                                          new MinMaxColumnIndex<>(pickupDateCol),
-                                          new MinMaxColumnIndex<>(dropoffDateCol),
-                                          new BucketColumnIndex<>(
-                                              pickupDateCol, t -> t.truncatedTo(ChronoUnit.DAYS)),
-                                          new BucketColumnIndex<>(
-                                              dropoffDateCol,
-                                              t -> t.truncatedTo(ChronoUnit.DAYS)))))
+                              path -> {
+                                var fileIndexes =
+                                    List.<ColumnIndex>of(
+                                        new MinMaxColumnIndex<>(pickupDateCol),
+                                        new MinMaxColumnIndex<>(dropoffDateCol),
+                                        new BucketColumnIndex<>(
+                                            pickupDateCol, t -> t.truncatedTo(ChronoUnit.DAYS)),
+                                        new BucketColumnIndex<>(
+                                            dropoffDateCol, t -> t.truncatedTo(ChronoUnit.DAYS)));
+                                return new CsvStorageFile(
+                                    path,
+                                    csvSchema,
+                                    new RowOffsetLocator(settings.skipIndexStep),
+                                    fileIndexes);
+                              })
                           .collect(Collectors.toList());
                     } catch (IOException e) {
                       throw new RuntimeException(e);
@@ -133,11 +134,15 @@ public final class RidesTable implements AverageDistances {
   @Override
   public HashMap<Integer, Double> getAverageDistances(LocalDateTime start, LocalDateTime end) {
     var timeRange = Range.closed(start, end);
+
     var predicate =
         QueryPredicate.allMatches(
             List.of(
                 new Between<>(pickupDateCol, Range.atLeast(start)),
-                new Between<>(dropoffDateCol, Range.atMost(end))));
+                // this safe to set more strict predicate on dropoff column, because 'dropoff'
+                // always greater than 'pickup' timestamp. Such predicate change reduces query
+                // time by several times(tested on taxi rides CSV files from S3).
+                new Between<>(dropoffDateCol, Range.closed(start, end))));
     try {
       return workerPool
           .submit(
@@ -145,14 +150,7 @@ public final class RidesTable implements AverageDistances {
                 var merged =
                     csvFiles.stream()
                         .parallel()
-                        .map(
-                            csvFile -> {
-                              try {
-                                return csvFile.openReader(avgDistColumns, predicate);
-                              } catch (IOException e) {
-                                throw new RuntimeException(e);
-                              }
-                            })
+                        .map(csvFile -> openCsvReader(predicate, csvFile))
                         .map(rowReader -> aggregate(rowReader, timeRange))
                         .reduce(
                             new HashMap<>(),
@@ -165,6 +163,14 @@ public final class RidesTable implements AverageDistances {
               })
           .get();
     } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private RowReader openCsvReader(QueryPredicate predicate, CsvStorageFile csvFile) {
+    try {
+      return csvFile.openReader(avgDistColumns, predicate);
+    } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
@@ -184,10 +190,10 @@ public final class RidesTable implements AverageDistances {
       var start = (LocalDateTime) row.get(startTimeIdx);
       var end = (LocalDateTime) row.get(endTimeIdx);
       if (timeRange.contains(start) && timeRange.contains(end)) {
-        var passangerCnt = (Byte) row.get(countIdx);
+        var passengerCnt = (Byte) row.get(countIdx);
         var distance = (Float) row.get(distIdx);
-        if (passangerCnt != null && distance != null) {
-          groupby.computeIfAbsent(passangerCnt, key -> new FloatAvgAggregation()).add(distance);
+        if (passengerCnt != null && distance != null) {
+          groupby.computeIfAbsent(passengerCnt, key -> new FloatAvgAggregation()).add(distance);
         }
       }
     }

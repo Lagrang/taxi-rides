@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatObject;
 import com.google.common.collect.Range;
 import org.junit.jupiter.api.Test;
 
-public class RowLocatorTest {
+public class RowOffsetLocatorTest {
 
   @Test
   void testRowIdSearch() {
-    var rowLocator = new RowLocator(1);
+    var rowLocator = new RowOffsetLocator(1);
     var maxRowId = 1000;
     for (long i = 0; i < maxRowId; i++) {
       // use negative values to check that sparse index will not fail if row ID will have
