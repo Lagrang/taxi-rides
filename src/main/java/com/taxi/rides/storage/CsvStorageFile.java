@@ -30,6 +30,7 @@ public final class CsvStorageFile implements StorageFile {
   private final Schema csvSchema;
   private final RowOffsetLocator rowLocator;
   private final ColumnIndexes indexes;
+  private long rowsCount;
 
   public CsvStorageFile(
       Path csvPath,
@@ -67,7 +68,7 @@ public final class CsvStorageFile implements StorageFile {
     this.indexes = new ColumnIndexes(indexesToPopulate);
   }
 
-  private static void populateIndexes(
+  private void populateIndexes(
       Iterator<CsvRow> reader,
       Schema schema,
       RowOffsetLocator rowLocator,
@@ -88,6 +89,7 @@ public final class CsvStorageFile implements StorageFile {
     reader.next(); // skip CSV header
     reader.forEachRemaining(
         row -> {
+          rowsCount++;
           // row ID will start from 0: ordinal number starts from 1, and it accounts header line
           long rowId = row.getOriginalLineNumber() - 2;
           rowLocator.addEntry(rowId, row.getStartingOffset());
@@ -198,7 +200,8 @@ public final class CsvStorageFile implements StorageFile {
 
     @Override
     public void printStats() {
-      System.out.println(csvPath.getFileName() + ": " + rowsRead + " rows read.");
+      System.out.println(
+          csvPath.getFileName() + ": " + rowsRead + " rows read/total rows=" + rowsCount + ".");
     }
   }
 }
