@@ -119,6 +119,7 @@ public final class CsvStorageFile implements StorageFile {
     if (rowsRange.isEmpty()) {
       return RowReader.empty(new Schema(requiredColumns));
     }
+    // compute byte offsets of rows which should be scanned in this file according to index data
     Range<Long> rowOffsets = rowLocator.getClosestOffsets(rowsRange);
     return new CsvIter(colIdx, rowOffsets);
   }
@@ -134,7 +135,7 @@ public final class CsvStorageFile implements StorageFile {
     private final SeekableByteChannel fileChannel;
     private final long startRowOffset;
     private final long endRowOffset;
-    private long lastSeenOffset;
+    private long bytesRead;
 
     public CsvIter(int[] colIdx, Range<Long> offsets) throws IOException {
       this.colIdx = colIdx;
@@ -170,14 +171,14 @@ public final class CsvStorageFile implements StorageFile {
 
     @Override
     public boolean hasNext() {
-      return endRowOffset > startRowOffset + lastSeenOffset && rowIter.hasNext();
+      return endRowOffset > startRowOffset + bytesRead && rowIter.hasNext();
     }
 
     @Override
     public Row next() {
       var result = new Row(colIdx.length);
       var row = rowIter.next();
-      lastSeenOffset = row.getStartingOffset();
+      bytesRead = row.getStartingOffset();
       int outputSchemaIdx = 0;
       for (int idx : colIdx) {
         String rawVal = row.getField(idx);
