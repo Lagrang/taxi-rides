@@ -159,7 +159,6 @@ public final class RidesTable implements AverageDistances {
                             RidesTable::mergeGroupbyMaps);
 
                 var res = new HashMap<Integer, Double>();
-                merged.forEach((k, v) -> System.out.println(k + " : " + v));
                 merged.forEach((k, v) -> res.put((int) k, v.computeResult()));
                 return res;
               })
@@ -171,6 +170,7 @@ public final class RidesTable implements AverageDistances {
 
   private RowReader openCsvReader(QueryPredicate predicate, CsvStorageFile csvFile) {
     try {
+      // pass query predicate to reduce scan intervals in CSV files
       return csvFile.openReader(avgDistColumns, predicate);
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -183,7 +183,6 @@ public final class RidesTable implements AverageDistances {
     int distIdx = rowReader.schema().getColumnIndex(tripDistanceCol.name()).getAsInt();
     int startTimeIdx = rowReader.schema().getColumnIndex(pickupDateCol.name()).getAsInt();
     int endTimeIdx = rowReader.schema().getColumnIndex(dropoffDateCol.name()).getAsInt();
-    // TODO: use 'primitive' hash map from agrona lib
     var groupby = new HashMap<Byte, DoubleAvgAggregation>();
     int count = 0;
     while (rowReader.hasNext()) {

@@ -13,6 +13,7 @@ dependencies {
 
     implementation 'com.google.guava:guava:30.1.1-jre'
     implementation 'de.siegmar:fastcsv:2.1.0'
+    implementation 'info.picocli:picocli:4.1.4'
 }
 
 application {
