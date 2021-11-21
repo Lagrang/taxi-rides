@@ -1,5 +1,6 @@
 package com.taxi.rides;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Range;
 import com.taxi.rides.query.aggregations.DoubleAvgAggregation;
 import com.taxi.rides.storage.CsvStorageFile;
@@ -28,6 +29,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public final class RidesTable implements AverageDistances {
@@ -185,10 +187,11 @@ public final class RidesTable implements AverageDistances {
     int startTimeIdx = rowReader.schema().getColumnIndex(pickupDateCol.name()).getAsInt();
     int endTimeIdx = rowReader.schema().getColumnIndex(dropoffDateCol.name()).getAsInt();
     var groupby = new HashMap<Byte, DoubleAvgAggregation>();
-    int count = 0;
+    long totalMs = 0;
+    var sw = Stopwatch.createUnstarted();
     while (rowReader.hasNext()) {
-      count++;
       Row row = rowReader.next();
+      sw.start();
       var start = (LocalDateTime) row.get(startTimeIdx);
       var end = (LocalDateTime) row.get(endTimeIdx);
       if (timeRange.contains(start) && timeRange.contains(end)) {
@@ -198,8 +201,16 @@ public final class RidesTable implements AverageDistances {
           groupby.computeIfAbsent(passengerCnt, key -> new DoubleAvgAggregation()).add(distance);
         }
       }
+      sw.stop();
+      totalMs += sw.elapsed(TimeUnit.MILLISECONDS);
+      sw.reset();
+    }
+
+    if (totalMs > 300) {
+      System.out.println("Agg time took " + totalMs + "ms");
     }
     rowReader.printStats();
+
     return groupby;
   }
 

@@ -66,7 +66,10 @@ public class App implements Runnable, CommandLine.ITypeConverter<LocalDateTime> 
     System.out.println("Initialization took " + sw.elapsed(TimeUnit.SECONDS) + "sec");
     System.out.println();
 
+    sw.reset();
+    sw.start();
     var res = table.getAverageDistances(startDate, endDate);
+    System.out.println("Query took: " + sw.elapsed(TimeUnit.SECONDS) + "sec");
     System.out.println();
     System.out.println("Average distances(passengers count to average distance):");
     res.forEach((k, v) -> System.out.println(k + " : " + v));
