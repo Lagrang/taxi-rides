@@ -4,6 +4,6 @@ public class ShortDataType extends AbstractDataType<Short> {
 
   @Override
   public Short parseRawValue(String rawValue) {
-    return Short.parseShort(rawValue.trim());
+    return Short.parseShort(rawValue);
   }
 }

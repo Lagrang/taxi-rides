@@ -4,6 +4,6 @@ public class ByteDataType extends AbstractDataType<Byte> {
 
   @Override
   public Byte parseRawValue(String rawValue) {
-    return Byte.parseByte(rawValue.trim());
+    return Byte.parseByte(rawValue);
   }
 }

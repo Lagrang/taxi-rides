@@ -4,6 +4,6 @@ public class FloatDataType extends AbstractDataType<Float> {
 
   @Override
   public Float parseRawValue(String rawValue) {
-    return Float.parseFloat(rawValue.trim());
+    return Float.parseFloat(rawValue);
   }
 }
