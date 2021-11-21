@@ -39,7 +39,20 @@ public interface ColumnIndex<T extends Comparable<? super T>> {
    * @param predicate Between predicate.
    * @return
    */
-  Range<Long> evaluateBetween(QueryPredicate.Between<T> predicate);
+  default Range<Long> evaluateBetween(QueryPredicate.Between<T> predicate) {
+    return Range.all();
+  }
+
+  /**
+   * Evaluate passed predicate and returns range of row IDs which can satisfy to predicate
+   * condition.
+   *
+   * @param predicate 'Not equals' predicate.
+   * @return
+   */
+  default Range<Long> evaluateNotEquals(QueryPredicate.NotEqual<T> predicate) {
+    return Range.all();
+  }
 
   enum Priority {
     HIGH(0),

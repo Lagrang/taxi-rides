@@ -102,23 +102,26 @@ class RidesTableTest {
             "total_amount",
             "congestion_surcharge");
         for (int j = 0; j < 5000; j++) {
+          var isNull = ThreadLocalRandom.current().nextBoolean();
           int psgCnt = ThreadLocalRandom.current().nextInt(0, 9);
           double dist = ThreadLocalRandom.current().nextDouble(0.1, 4.5);
 
-          if (pickupDate.compareTo(queryStartTs) >= 0 && dropoffDate.compareTo(queryEndTs) <= 0) {
-            var avgState =
-                expected.computeIfAbsent(
-                    psgCnt, k -> new AvgState(new DoubleAdder(), new LongAdder()));
-            avgState.sum.add(dist);
-            avgState.count.increment();
+          if (!isNull) {
+            if (pickupDate.compareTo(queryStartTs) >= 0 && dropoffDate.compareTo(queryEndTs) <= 0) {
+              var avgState =
+                  expected.computeIfAbsent(
+                      psgCnt, k -> new AvgState(new DoubleAdder(), new LongAdder()));
+              avgState.sum.add(dist);
+              avgState.count.increment();
+            }
           }
 
           csv.writeRow(
               ThreadLocalRandom.current().nextInt(0, 5) + "",
               pickupDate.format(DATE_FORMATTER),
               dropoffDate.format(DATE_FORMATTER),
-              psgCnt + "",
-              dist + "",
+              isNull ? "" : psgCnt + "",
+              isNull ? "" : dist + "",
               ThreadLocalRandom.current().nextInt(1, 5) + "",
               ThreadLocalRandom.current().nextBoolean()
                   ? "N"

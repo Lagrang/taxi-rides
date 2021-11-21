@@ -117,7 +117,7 @@ public final class CsvStorageFile implements StorageFile {
       colIdx[i++] = index;
     }
 
-    Range<Long> rowsRange = indexes.evaluate(predicate);
+    Range<Long> rowsRange = indexes.evaluatePredicate(predicate);
     if (rowsRange.isEmpty()) {
       System.out.println(csvPath.getFileName() + ": skipped using indexes.");
       return RowReader.empty(new Schema(requiredColumns));

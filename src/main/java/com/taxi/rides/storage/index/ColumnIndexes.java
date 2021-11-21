@@ -5,9 +5,9 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Range;
 import com.google.common.collect.TreeMultimap;
 import com.taxi.rides.storage.QueryPredicate;
-import com.taxi.rides.storage.QueryPredicate.Between;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public final class ColumnIndexes {
@@ -29,23 +29,35 @@ public final class ColumnIndexes {
    * @param predicate Column predicate
    * @return Range of row's IDs.
    */
-  public Range<Long> evaluate(QueryPredicate predicate) {
+  public Range<Long> evaluatePredicate(QueryPredicate predicate) {
     var result = Range.<Long>all();
     if (predicate.between().isEmpty()) {
       return result;
     }
 
     // sort indexes according to their priority and evaluate indexes with high priority first
+    var betweenIndexes =
+        predicate.between().stream()
+            .map(
+                between ->
+                    this.indexes.get(between.column().name()).stream()
+                        .map(index -> new IndexAndPredicate(index, i -> i.evaluateBetween(between)))
+                        .iterator())
+            .collect(Collectors.toList());
+    var notEqualIndexes =
+        predicate.notEquals().stream()
+            .map(
+                notEqual ->
+                    this.indexes.get(notEqual.column().name()).stream()
+                        .map(
+                            index ->
+                                new IndexAndPredicate(index, i -> i.evaluateNotEquals(notEqual)))
+                        .iterator())
+            .collect(Collectors.toList());
+    betweenIndexes.addAll(notEqualIndexes);
     var indexes =
         Iterators.mergeSorted(
-            predicate.between().stream()
-                .map(
-                    between ->
-                        this.indexes.get(between.column().name()).stream()
-                            .map(index -> new IndexAndPredicate(index, between))
-                            .iterator())
-                .collect(Collectors.toList()),
-            (i1, i2) -> INDEX_COMPARATOR.compare(i1.index, i2.index));
+            betweenIndexes, (i1, i2) -> INDEX_COMPARATOR.compare(i1.index, i2.index));
 
     // here we are intersecting ranges returned by all indexes. These
     // indexes return approximate rows range. If any two index ranges do not intersect, then
@@ -53,7 +65,7 @@ public final class ColumnIndexes {
     // narrowest subset of rows which can satisfy predicate.
     while (indexes.hasNext()) {
       IndexAndPredicate next = indexes.next();
-      var range = next.index().evaluateBetween(next.predicate());
+      var range = next.eval().apply(next.index());
       if (!range.isConnected(result) || (result = result.intersection(range)).isEmpty()) {
         return result;
       }
@@ -61,5 +73,5 @@ public final class ColumnIndexes {
     return result;
   }
 
-  record IndexAndPredicate(ColumnIndex index, Between predicate) {}
+  record IndexAndPredicate(ColumnIndex index, Function<ColumnIndex, Range<Long>> eval) {}
 }

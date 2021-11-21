@@ -6,11 +6,13 @@ import com.taxi.rides.query.aggregations.DoubleAvgAggregation;
 import com.taxi.rides.storage.CsvStorageFile;
 import com.taxi.rides.storage.QueryPredicate;
 import com.taxi.rides.storage.QueryPredicate.Between;
+import com.taxi.rides.storage.QueryPredicate.NotEqual;
 import com.taxi.rides.storage.Row;
 import com.taxi.rides.storage.RowReader;
 import com.taxi.rides.storage.index.BucketColumnIndex;
 import com.taxi.rides.storage.index.ColumnIndex;
 import com.taxi.rides.storage.index.MinMaxColumnIndex;
+import com.taxi.rides.storage.index.NotNullColumnIndex;
 import com.taxi.rides.storage.index.RowOffsetLocator;
 import com.taxi.rides.storage.schema.Column;
 import com.taxi.rides.storage.schema.Schema;
@@ -99,6 +101,8 @@ public final class RidesTable implements AverageDistances {
                                     List.<ColumnIndex>of(
                                         new MinMaxColumnIndex<>(pickupDateCol),
                                         new MinMaxColumnIndex<>(dropoffDateCol),
+                                        new NotNullColumnIndex<>(passengerCountCol),
+                                        new NotNullColumnIndex<>(tripDistanceCol),
                                         new BucketColumnIndex<>(
                                             pickupDateCol, t -> t.truncatedTo(ChronoUnit.DAYS)),
                                         new BucketColumnIndex<>(
@@ -139,13 +143,17 @@ public final class RidesTable implements AverageDistances {
     var timeRange = Range.closed(start, end);
 
     var predicate =
-        QueryPredicate.allMatches(
-            List.of(
-                new Between<>(pickupDateCol, Range.atLeast(start)),
-                // this safe to set more strict predicate on dropoff column, because 'dropoff'
-                // always greater than 'pickup' timestamp. Such predicate change reduces query
-                // time by several times(tested on taxi rides CSV files from S3).
-                new Between<>(dropoffDateCol, Range.closed(start, end))));
+        new QueryPredicate()
+            .withBetween(
+                List.of(
+                    new Between<>(pickupDateCol, Range.atLeast(start)),
+                    // this safe to set more strict predicate on dropoff column, because 'dropoff'
+                    // always greater than 'pickup' timestamp. Such predicate change reduces query
+                    // time by several times(tested on taxi rides CSV files from S3).
+                    new Between<>(dropoffDateCol, Range.closed(start, end))))
+            .withNotEquals(
+                List.of(
+                    new NotEqual(passengerCountCol, null), new NotEqual(tripDistanceCol, null)));
     try {
       // scan each CSV in separate thread
       return workerPool
@@ -194,7 +202,7 @@ public final class RidesTable implements AverageDistances {
       sw.start();
       var start = (LocalDateTime) row.get(startTimeIdx);
       var end = (LocalDateTime) row.get(endTimeIdx);
-      if (timeRange.contains(start) && timeRange.contains(end)) {
+      if (start != null && end != null && timeRange.contains(start) && timeRange.contains(end)) {
         var passengerCnt = (Byte) row.get(countIdx);
         var distance = (Double) row.get(distIdx);
         if (passengerCnt != null && distance != null) {

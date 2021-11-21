@@ -2,24 +2,31 @@ package com.taxi.rides.storage;
 
 import com.google.common.collect.Range;
 import com.taxi.rides.storage.schema.Column;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public final class QueryPredicate {
-  private final List<Between> between;
+  private List<Between> between = List.of();
+  private List<NotEqual> notEquals = List.of();
 
-  private QueryPredicate(List<Between> between) {
-    this.between = Collections.unmodifiableList(new ArrayList<>(between));
+  public QueryPredicate withBetween(List<Between> between) {
+    this.between = Objects.requireNonNull(between);
+    return this;
   }
 
-  public static QueryPredicate allMatches(List<Between> between) {
-    return new QueryPredicate(between);
+  public QueryPredicate withNotEquals(List<NotEqual> notEquals) {
+    this.notEquals = Objects.requireNonNull(notEquals);
+    return this;
   }
 
   public List<Between> between() {
     return between;
   }
 
+  public List<NotEqual> notEquals() {
+    return notEquals;
+  }
+
   public record Between<T extends Comparable<? super T>>(Column<T> column, Range<T> range) {}
+  public record NotEqual<T extends Comparable<? super T>>(Column<T> column, T notEqualTo) {}
 }

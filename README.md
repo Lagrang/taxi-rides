@@ -16,12 +16,17 @@ indexes on following columns: `tpep_pickup_datetime`, `tpep_dropoff_datetime`.
 Application builds two-level index. First level is `min-max` index, it used to filter out whole file
 if it not satisfies the predicate. Based on dataset located at
 S3(https://s3.amazonaws.com/nyc-tlc/trip+data/), `min-max` is rarely useful, because each file
-contains outlier values which enforce to scan almost all files.   
-For such cases, when `min-max` is nor very useful, application uses second level
-index, `bucket index`. Reasoning, how this index can help, may be found in Javadoc of
+contains outlier values which enforce to scan almost all files. For such cases, when `min-max`
+is nor very useful, application uses second level index, `bucket index`. Reasoning, how this index
+can help, may be found in Javadoc of
 the [BucketColumnIndex](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/index/BucketColumnIndex.java)
-class.  
-Application contains third type of
+class.   
+Another second level index
+is [NotNullColumnIndex](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/index/NotNullColumnIndex.java)
+. It helps to filter out sequential rows with NULL values at file start/end. S3 dataset sometimes
+contains sequence of NULL values for `passenger_count` columns at the end of the file.
+
+Application contains another type of
 index: [SparseColumnIndex](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/index/SparseColumnIndex.java)
 . It used internally by other components, but doesn't have direct application as column index,
 because there is no sorted columns used by query predicate.
