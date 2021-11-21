@@ -117,6 +117,7 @@ public final class CsvStorageFile implements StorageFile {
 
     Range<Long> rowsRange = indexes.evaluate(predicate);
     if (rowsRange.isEmpty()) {
+      System.out.println(csvPath.getFileName() + ": skipped using indexes.");
       return RowReader.empty(new Schema(requiredColumns));
     }
     // compute byte offsets of rows which should be scanned in this file according to index data
@@ -136,6 +137,7 @@ public final class CsvStorageFile implements StorageFile {
     private final long startRowOffset;
     private final long endRowOffset;
     private long bytesRead;
+    private long rowsRead;
 
     public CsvIter(int[] colIdx, Range<Long> offsets) throws IOException {
       this.colIdx = colIdx;
@@ -176,6 +178,7 @@ public final class CsvStorageFile implements StorageFile {
 
     @Override
     public Row next() {
+      rowsRead++;
       var result = new Row(colIdx.length);
       var row = rowIter.next();
       bytesRead = row.getStartingOffset();
@@ -191,6 +194,11 @@ public final class CsvStorageFile implements StorageFile {
     @Override
     public Schema schema() {
       return readerSchema;
+    }
+
+    @Override
+    public void printStats() {
+      System.out.println(csvPath.getFileName() + ": " + rowsRead + " rows read.");
     }
   }
 }

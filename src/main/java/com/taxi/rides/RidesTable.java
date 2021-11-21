@@ -145,6 +145,7 @@ public final class RidesTable implements AverageDistances {
                 // time by several times(tested on taxi rides CSV files from S3).
                 new Between<>(dropoffDateCol, Range.closed(start, end))));
     try {
+      // scan each CSV in separate thread
       return workerPool
           .submit(
               () -> {
@@ -198,7 +199,7 @@ public final class RidesTable implements AverageDistances {
         }
       }
     }
-    System.out.println("CSV read rows: " + count);
+    rowReader.printStats();
     return groupby;
   }
 
