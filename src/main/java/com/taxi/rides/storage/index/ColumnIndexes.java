@@ -31,10 +31,6 @@ public final class ColumnIndexes {
    */
   public Range<Long> evaluatePredicate(QueryPredicate predicate) {
     var result = Range.<Long>all();
-    if (predicate.between().isEmpty()) {
-      return result;
-    }
-
     // sort indexes according to their priority and evaluate indexes with high priority first
     var betweenIndexes =
         predicate.between().stream()

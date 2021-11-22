@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
@@ -75,6 +76,16 @@ public final class RidesTable implements AverageDistances {
                 new Column<>("total_amount", new FloatDataType()),
                 new Column<>("congestion_surcharge", new FloatDataType())));
     avgDistColumns = List.of(pickupDateCol, dropoffDateCol, passengerCountCol, tripDistanceCol);
+
+    if (settings.disableMinMaxIndex) {
+      System.out.println("Min-max index disabled");
+    }
+    if (settings.disableNotNullIndex) {
+      System.out.println("Not-null index disabled");
+    }
+    if (settings.disableBucketIndex) {
+      System.out.println("Bucket index disabled");
+    }
   }
 
   private static HashMap<Byte, DoubleAvgAggregation> mergeGroupbyMaps(
@@ -86,6 +97,10 @@ public final class RidesTable implements AverageDistances {
 
   @Override
   public void init(Path dataDir) {
+    if (!Files.exists(dataDir)) {
+      throw new IllegalArgumentException(dataDir + " is not exists");
+    }
+
     ForkJoinPool pool = new ForkJoinPool(settings.initThreads);
     try {
       csvFiles =
@@ -96,23 +111,12 @@ public final class RidesTable implements AverageDistances {
                           .parallel()
                           .filter(RidesTable::isCsvFile)
                           .map(
-                              path -> {
-                                var fileIndexes =
-                                    List.<ColumnIndex>of(
-                                        new MinMaxColumnIndex<>(pickupDateCol),
-                                        new MinMaxColumnIndex<>(dropoffDateCol),
-                                        new NotNullColumnIndex<>(passengerCountCol),
-                                        new NotNullColumnIndex<>(tripDistanceCol),
-                                        new BucketColumnIndex<>(
-                                            pickupDateCol, t -> t.truncatedTo(ChronoUnit.DAYS)),
-                                        new BucketColumnIndex<>(
-                                            dropoffDateCol, t -> t.truncatedTo(ChronoUnit.DAYS)));
-                                return new CsvStorageFile(
-                                    path,
-                                    csvSchema,
-                                    new RowOffsetLocator(settings.skipIndexStep),
-                                    fileIndexes);
-                              })
+                              path ->
+                                  new CsvStorageFile(
+                                      path,
+                                      csvSchema,
+                                      new RowOffsetLocator(settings.skipIndexStep),
+                                      prepareIndexes()))
                           .collect(Collectors.toList());
                     } catch (IOException e) {
                       throw new RuntimeException(e);
@@ -125,6 +129,23 @@ public final class RidesTable implements AverageDistances {
       // simple shutdown, no need to wait termination of pool here
       pool.shutdown();
     }
+  }
+
+  private List<ColumnIndex> prepareIndexes() {
+    var indexList = new ArrayList<ColumnIndex>();
+    if (!settings.disableMinMaxIndex) {
+      indexList.add(new MinMaxColumnIndex<>(pickupDateCol));
+      indexList.add(new MinMaxColumnIndex<>(dropoffDateCol));
+    }
+    if (!settings.disableBucketIndex) {
+      indexList.add(new BucketColumnIndex<>(pickupDateCol, t -> t.truncatedTo(ChronoUnit.DAYS)));
+      indexList.add(new BucketColumnIndex<>(dropoffDateCol, t -> t.truncatedTo(ChronoUnit.DAYS)));
+    }
+    if (!settings.disableNotNullIndex) {
+      indexList.add(new NotNullColumnIndex<>(passengerCountCol));
+      indexList.add(new NotNullColumnIndex<>(tripDistanceCol));
+    }
+    return indexList;
   }
 
   private static boolean isCsvFile(Path path) {
@@ -232,22 +253,25 @@ public final class RidesTable implements AverageDistances {
     int initThreads = Runtime.getRuntime().availableProcessors();
     int executionThreads = Runtime.getRuntime().availableProcessors();
     int skipIndexStep = 8 * 1024;
+    boolean disableBucketIndex = false;
+    boolean disableNotNullIndex = false;
+    boolean disableMinMaxIndex = false;
 
     public Settings() {}
 
-    public Settings(int initThreads) {
-      this.initThreads = initThreads;
-    }
-
-    public Settings(int initThreads, int executionThreads) {
-      this.initThreads = initThreads;
-      this.executionThreads = executionThreads;
-    }
-
-    public Settings(int initThreads, int executionThreads, int skipIndexStep) {
+    public Settings(
+        int initThreads,
+        int executionThreads,
+        int skipIndexStep,
+        boolean disableBucketIndex,
+        boolean disableNotNullIndex,
+        boolean disableMinMaxIndex) {
       this.initThreads = initThreads;
       this.executionThreads = executionThreads;
       this.skipIndexStep = skipIndexStep;
+      this.disableBucketIndex = disableBucketIndex;
+      this.disableNotNullIndex = disableNotNullIndex;
+      this.disableMinMaxIndex = disableMinMaxIndex;
     }
   }
 }

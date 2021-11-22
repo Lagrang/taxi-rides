@@ -7,12 +7,52 @@ Requirements: JDK 17
 Build and test: `./gradlew build`
 
 Run
-application: `./gradlew run --args="-f \"$CSV_FOLDER\" --from \"2020-01-01 00:00:00\" --until \"2020-05-01 00:00:00\""`
+application: `./gradlew run --args="-f \"$CSV_FOLDER\" --from \"2020-05-01 00:00:00\" --until \"2020-08-11 00:00:00\""`
+
+Print help: `./gradlew run --args="-h"`
+
+#### Example run:
+
+```
+./gradlew run --args="-f \"$HOME/trip_data\" --from \"2020-05-01 00:00:00\" --until \"2020-08-11 00:00:00\" --no-min-max-index"
+
+Min-max index disabled
+Initializing from folder: /home/lagrang/Downloads/trip_data
+Initialization took 20sec
+
+yellow_tripdata_2020-11.csv: skipped using indexes.
+yellow_tripdata_2020-10.csv: skipped using indexes.
+yellow_tripdata_2020-09.csv: skipped using indexes.
+yellow_tripdata_2020-01.csv: 57345 rows read/total rows=6405008.
+yellow_tripdata_2020-04.csv: skipped using indexes.
+yellow_tripdata_2020-12.csv: skipped using indexes.
+yellow_tripdata_2020-03.csv: 131073 rows read/total rows=3007292.
+yellow_tripdata_2020-05.csv: 294913 rows read/total rows=348371.
+yellow_tripdata_2020-06.csv: 499713 rows read/total rows=549760.
+yellow_tripdata_2020-07.csv: 745473 rows read/total rows=800412.
+yellow_tripdata_2020-08.csv: 942081 rows read/total rows=1007284.
+yellow_tripdata_2020-02.csv: 3407873 rows read/total rows=6299354.
+Query took: 3sec
+
+Average distances(passengers count to average distance):
+0 : 2.633296195986711
+1 : 2.721230739382146
+2 : 2.9405974468482334
+3 : 2.8780384483872186
+4 : 3.0335751184960342
+5 : 2.8130163781917843
+6 : 2.8506969361166803
+7 : 2.168
+8 : 0.0
+9 : 0.0
+
+```
 
 ## Implementation
 
-According defined query pattern, application tries to reduce scanning of CSV files by using column
-indexes on following columns: `tpep_pickup_datetime`, `tpep_dropoff_datetime`.  
+Base idea is to use CSV based storage 'as is', without converting to some other format. Application
+tries to reduce scanning of CSV files by using column indexes on following
+columns: `tpep_pickup_datetime`, `tpep_dropoff_datetime`.  
 Application builds two-level index. First level is `min-max` index, it used to filter out whole file
 if it not satisfies the predicate. Based on dataset located at
 S3(https://s3.amazonaws.com/nyc-tlc/trip+data/), `min-max` is rarely useful, because each file
@@ -24,7 +64,8 @@ class.
 Another second level index
 is [NotNullColumnIndex](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/index/NotNullColumnIndex.java)
 . It helps to filter out sequential rows with NULL values at file start/end. S3 dataset sometimes
-contains sequence of NULL values for `passenger_count` columns at the end of the file.
+contains sequence of NULL values for `passenger_count` columns at the end of the file.   
+Affect of each index type can be measured by disabling each of them(through command line arguments).
 
 Application contains another type of
 index: [SparseColumnIndex](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/index/SparseColumnIndex.java)

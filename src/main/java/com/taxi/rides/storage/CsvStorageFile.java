@@ -74,10 +74,6 @@ public final class CsvStorageFile implements StorageFile {
       RowOffsetLocator rowLocator,
       List<ColumnIndex> indexesToPopulate) {
 
-    if (indexesToPopulate.isEmpty()) {
-      return;
-    }
-
     // compute for each index, where required column located inside CSV row(e.g., column index)
     var indexes =
         indexesToPopulate.stream()

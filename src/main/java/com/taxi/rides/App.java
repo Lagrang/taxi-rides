@@ -50,6 +50,27 @@ public class App implements Runnable, CommandLine.ITypeConverter<LocalDateTime> 
       description = "Step used by sparse indexes(each 'step' row will be indexed)")
   private int skipIndex;
 
+  @CommandLine.Option(
+      names = {"--no-min-max-index"},
+      description = "Disable min-max index")
+  boolean disableMinMaxIndex = false;
+
+  @CommandLine.Option(
+      names = {"--no-bucket-index"},
+      description = "Disable bucket index")
+  boolean disableBucketIndex = false;
+
+  @CommandLine.Option(
+      names = {"--no-not-null-index"},
+      description = "Disable not-null index")
+  boolean disableNotNullIndex = false;
+
+  @CommandLine.Option(
+      names = {"-h", "--help"},
+      usageHelp = true,
+      description = "Print help")
+  boolean help;
+
   private RidesTable table;
 
   public static void main(String[] args) {
@@ -59,7 +80,20 @@ public class App implements Runnable, CommandLine.ITypeConverter<LocalDateTime> 
 
   @Override
   public void run() {
-    table = new RidesTable(new Settings(initThreads, queryThreads, skipIndex));
+    if (help) {
+      CommandLine.usage(new App(), System.out);
+      return;
+    }
+
+    table =
+        new RidesTable(
+            new Settings(
+                initThreads,
+                queryThreads,
+                skipIndex,
+                disableBucketIndex,
+                disableNotNullIndex,
+                disableMinMaxIndex));
     var sw = Stopwatch.createStarted();
     System.out.println("Initializing from folder: " + csvFolder);
     table.init(csvFolder);
