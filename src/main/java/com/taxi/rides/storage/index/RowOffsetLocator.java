@@ -10,9 +10,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * Class maintenances sparse index of row locations inside file. It records file offset for each Nth
  * row.
  *
- * <p>This class contains methods which used to find out file offset range which corresponds to some
- * row range. Usually, these methods called with rows range computed by evaluating predicates on
- * indexes.
+ * <p>This class contains methods which is used to find out file offset range which corresponds to
+ * some row range. Usually, these methods are called with rows range computed by evaluating
+ * predicates on indexes.
  */
 public final class RowOffsetLocator {
 

@@ -8,9 +8,9 @@ import java.util.TreeMap;
 import java.util.function.Function;
 
 /**
- * This type of index helps to execute queries on mostly ordered data. This means, data not strongly
- * ordered in dataset, but ordered inside some bucket. For instance, we have a 'timestamp' column
- * with following data:
+ * This type of index helps to execute queries on mostly ordered data. This means, data is not
+ * strongly ordered in dataset, but ordered inside some bucket. For instance, we have a 'timestamp'
+ * column with following data:
  *
  * <ol>
  *   <li>2010-12-03 01:05:00

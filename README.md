@@ -53,12 +53,12 @@ Average distances(passengers count to average distance):
 Base idea is to use CSV based storage 'as is', without converting to some other format. Application
 tries to reduce scanning of CSV files by using column indexes on following
 columns: `tpep_pickup_datetime`, `tpep_dropoff_datetime`.  
-Application builds two-level index. First level is `min-max` index, it used to filter out whole file
-if it not satisfies the predicate. Based on dataset located at
+Application builds two-level index. First level is `min-max` index, it is used to filter out whole
+file if it is not satisfies the predicate. Based on dataset located at
 S3(https://s3.amazonaws.com/nyc-tlc/trip+data/), `min-max` is rarely useful, because each file
 contains outlier values which enforce to scan almost all files. For such cases, when `min-max`
-is nor very useful, application uses second level index, `bucket index`. Reasoning, how this index
-can help, may be found in Javadoc of
+is not very useful, application uses second level index, `bucket index`. More information about this
+index may be found in Javadoc of
 the [BucketColumnIndex](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/index/BucketColumnIndex.java)
 class.   
 Another second level index
@@ -69,10 +69,11 @@ Affect of each index type can be measured by disabling each of them(through comm
 
 Application contains another type of
 index: [SparseColumnIndex](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/index/SparseColumnIndex.java)
-. It used internally by other components, but doesn't have direct application as column index,
+. It is used internally by other components, but doesn't have direct application as column index,
 because there is no sorted columns used by query predicate.
 
-Column indexes provides the narrowest rows range which contains data we interested. Using this rows
+Column indexes provides the narrowest rows range which contains data we interested in. Using this
+rows
 range, [CsvStorageFile](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/CsvStorageFile.java)
 computes start/end offsets inside CSV file. Offsets computation happens
 in [RowOffsetLocator](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/index/RowOffsetLocator.java)
@@ -87,8 +88,8 @@ parts is negligible against it.
 During development, profiler reveals that measurable time spent to parse timestamp columns. At
 beginning, parser
 implementation([TimestampDataType](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/schema/datatypes/TimestampDataType.java))
-use standard Java utilities to parse timestamps. These standard tools written to cover wide range of
-use cases and not very performant in common case. Current version
+uses standard Java utilities to parse timestamps. These standard tools are written to cover wide
+range of use cases and not very performant in common case. Current version
 of [TimestampDataType](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/schema/datatypes/TimestampDataType.java)
 class uses observation that we have strict timestamp format which can be parsed efficiently.
 
