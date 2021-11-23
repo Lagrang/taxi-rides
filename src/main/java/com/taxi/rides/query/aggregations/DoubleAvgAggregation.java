@@ -4,7 +4,7 @@ import java.util.StringJoiner;
 
 public final class DoubleAvgAggregation implements AggregationOperator<Double> {
 
-  private Double sum;
+  private double sum;
   private int count;
 
   public DoubleAvgAggregation() {

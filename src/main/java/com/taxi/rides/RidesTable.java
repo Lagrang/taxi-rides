@@ -146,7 +146,7 @@ public final class RidesTable implements AverageDistances {
               startAt,
               settings.splitSize);
       res.add(file);
-      if (startAt >= file.endOffset() || fileSize <= file.endOffset() + 1) {
+      if (fileSize <= file.endOffset() + 1) {
         break;
       }
       startAt = file.endOffset() + 1;

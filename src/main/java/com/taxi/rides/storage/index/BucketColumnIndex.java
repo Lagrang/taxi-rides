@@ -72,12 +72,9 @@ public class BucketColumnIndex<T extends Comparable<? super T>, B extends Compar
   @Override
   public Range<Long> evaluateBetween(Between<T> predicate) {
     if (predicate.range().hasLowerBound() && predicate.range().hasUpperBound()) {
-      var map =
-          index.subMap(
-              getBucketId.apply(predicate.range().lowerEndpoint()),
-              true,
-              getBucketId.apply(predicate.range().upperEndpoint()),
-              true);
+      var lowerBucket = getBucketId.apply(predicate.range().lowerEndpoint());
+      var upperBucket = getBucketId.apply(predicate.range().upperEndpoint());
+      var map = index.subMap(lowerBucket, true, upperBucket, true);
       if (map.isEmpty()) {
         return EMPTY_RANGE;
       }
@@ -87,7 +84,7 @@ public class BucketColumnIndex<T extends Comparable<? super T>, B extends Compar
           ? Range.closed(
               Math.min(lower.getValue().minRowId, upper.getValue().minRowId),
               Math.max(lower.getValue().maxRowId, upper.getValue().maxRowId))
-          : Range.atLeast(lower.getValue().minRowId);
+          : Range.closed(lower.getValue().minRowId, lower.getValue().maxRowId);
     } else if (predicate.range().hasLowerBound()) {
       var map = index.tailMap(getBucketId.apply(predicate.range().lowerEndpoint()));
       if (map.isEmpty()) {

@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 public final class ColumnIndexes {
 
+  private static final Range<Long> EMPTY_RANGE = Range.closedOpen(0L, 0L);
   private static final Comparator<ColumnIndex> INDEX_COMPARATOR =
       Comparator.comparingInt(i -> i.order().priotity());
   private final Multimap<String, ColumnIndex> indexes;
@@ -63,7 +64,7 @@ public final class ColumnIndexes {
       IndexAndPredicate next = indexes.next();
       var range = next.eval().apply(next.index());
       if (!range.isConnected(result) || (result = result.intersection(range)).isEmpty()) {
-        return result;
+        return EMPTY_RANGE;
       }
     }
     return result;
