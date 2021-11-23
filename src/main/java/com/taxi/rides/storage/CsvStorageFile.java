@@ -135,7 +135,14 @@ public final class CsvStorageFile implements StorageFile {
     }
     Range<Long> rowsRange = indexes.evaluatePredicate(predicate);
     if (rowsRange.isEmpty()) {
-      System.out.println(csvPath.getFileName() + ": skipped using indexes.");
+      System.out.println(
+          csvPath.getFileName()
+              + "("
+              + fileStartOffset
+              + ":"
+              + fileEndOffset
+              + ")"
+              + ": skipped using indexes.");
       return RowReader.empty(new Schema(requiredColumns));
     }
     // compute byte offsets of rows which should be scanned in this file according to index data
