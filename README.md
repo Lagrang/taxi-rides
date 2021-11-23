@@ -20,28 +20,47 @@ Min-max index disabled
 Initializing from folder: /home/lagrang/Downloads/trip_data
 Initialization took 20sec
 
+Initializing from folder: /home/lagrang/Downloads/trip_data
+Initialization took 25sec
+
+yellow_tripdata_2020-01.csv: skipped using indexes.
 yellow_tripdata_2020-11.csv: skipped using indexes.
-yellow_tripdata_2020-10.csv: skipped using indexes.
 yellow_tripdata_2020-09.csv: skipped using indexes.
-yellow_tripdata_2020-01.csv: 57345 rows read/total rows=6405008.
+yellow_tripdata_2020-01.csv: skipped using indexes.
+yellow_tripdata_2020-11.csv: skipped using indexes.
+yellow_tripdata_2020-09.csv: skipped using indexes.
+yellow_tripdata_2020-01.csv: skipped using indexes.
+yellow_tripdata_2020-10.csv: skipped using indexes.
+yellow_tripdata_2020-01.csv: skipped using indexes.
 yellow_tripdata_2020-04.csv: skipped using indexes.
+yellow_tripdata_2020-10.csv: skipped using indexes.
+yellow_tripdata_2020-02.csv: skipped using indexes.
+yellow_tripdata_2020-02.csv: skipped using indexes.
+yellow_tripdata_2020-02.csv: skipped using indexes.
+yellow_tripdata_2020-02.csv: skipped using indexes.
+yellow_tripdata_2020-03.csv(0:104857600): 16385 rows read/total rows=1129738.
+yellow_tripdata_2020-03.csv(209715213:278288607): 24577 rows read/total rows=746599.
 yellow_tripdata_2020-12.csv: skipped using indexes.
-yellow_tripdata_2020-03.csv: 131073 rows read/total rows=3007292.
-yellow_tripdata_2020-05.csv: 294913 rows read/total rows=348371.
-yellow_tripdata_2020-06.csv: 499713 rows read/total rows=549760.
-yellow_tripdata_2020-07.csv: 745473 rows read/total rows=800412.
-yellow_tripdata_2020-08.csv: 942081 rows read/total rows=1007284.
-yellow_tripdata_2020-02.csv: 3407873 rows read/total rows=6299354.
-Query took: 3sec
+yellow_tripdata_2020-12.csv: skipped using indexes.
+yellow_tripdata_2020-01.csv: skipped using indexes.
+yellow_tripdata_2020-02.csv(209715325:314572996): 32769 rows read/total rows=1130341.
+yellow_tripdata_2020-02.csv(524288247:584190584): 24577 rows read/total rows=647614.
+yellow_tripdata_2020-01.csv(314572946:419430572): 57345 rows read/total rows=1131516.
+yellow_tripdata_2020-03.csv(104857601:209715212): 139265 rows read/total rows=1130955.
+yellow_tripdata_2020-05.csv(0:31641589): 294913 rows read/total rows=348371.
+yellow_tripdata_2020-06.csv(0:50277192): 499713 rows read/total rows=549760.
+yellow_tripdata_2020-07.csv(0:73326706): 745473 rows read/total rows=800412.
+yellow_tripdata_2020-08.csv(0:92411544): 942081 rows read/total rows=1007284.
+Query took: 1sec
 
 Average distances(passengers count to average distance):
 0 : 2.633296195986711
-1 : 2.721230739382146
-2 : 2.9405974468482334
-3 : 2.8780384483872186
-4 : 3.0335751184960342
-5 : 2.8130163781917843
-6 : 2.8506969361166803
+1 : 2.721228644785086
+2 : 2.940584374970827
+3 : 2.8780335840741578
+4 : 3.033393323039244
+5 : 2.812991578535052
+6 : 2.8505635911717975
 7 : 2.168
 8 : 0.0
 9 : 0.0
