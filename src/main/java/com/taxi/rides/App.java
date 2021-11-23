@@ -51,6 +51,12 @@ public class App implements Runnable, CommandLine.ITypeConverter<LocalDateTime> 
   private int skipIndex;
 
   @CommandLine.Option(
+      names = {"--split-size"},
+      defaultValue = "100",
+      description = "Logically split CSV file when if reaches size(in MB)")
+  private long splitSize;
+
+  @CommandLine.Option(
       names = {"--no-min-max-index"},
       description = "Disable min-max index")
   boolean disableMinMaxIndex = false;
@@ -91,6 +97,7 @@ public class App implements Runnable, CommandLine.ITypeConverter<LocalDateTime> 
                 initThreads,
                 queryThreads,
                 skipIndex,
+                splitSize * 1024 * 1024,
                 disableBucketIndex,
                 disableNotNullIndex,
                 disableMinMaxIndex));

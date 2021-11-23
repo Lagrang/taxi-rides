@@ -9,7 +9,6 @@ import com.taxi.rides.storage.schema.Schema;
 import de.siegmar.fastcsv.reader.CloseableIterator;
 import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
-import de.siegmar.fastcsv.reader.NamedCsvReader;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
@@ -17,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -31,48 +29,44 @@ public final class CsvStorageFile implements StorageFile {
   private final RowOffsetLocator rowLocator;
   private final ColumnIndexes indexes;
   private long rowsCount;
+  private final long fileStartOffset;
+  private long fileEndOffset;
+  private long lastRowOffset;
 
   public CsvStorageFile(
       Path csvPath,
       Schema expectedSchema,
       RowOffsetLocator rowLocator,
-      List<ColumnIndex> indexesToPopulate) {
+      List<ColumnIndex> indexesToPopulate,
+      long startAt,
+      long splitSize) {
     this.csvPath = Objects.requireNonNull(csvPath, "CSV file path missed");
-
-    try (var reader = NamedCsvReader.builder().fieldSeparator(',').build(csvPath)) {
-      // redefine schema object according to order of columns inside CSV file
-      var columns = new ArrayList<Column>();
-      for (String colName : reader.getHeader()) {
-        // no schema evolution right now: fail if we can't find some required column in CSV
-        Column column =
-            expectedSchema
-                .getColumn(colName)
-                .orElseThrow(
-                    () ->
-                        new IllegalArgumentException(
-                            colName + " column not exists in CSV file " + csvPath));
-        columns.add(column);
-      }
-      this.csvSchema = new Schema(columns);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-
-    try (var reader = CsvReader.builder().fieldSeparator(',').build(csvPath);
-        var iterator = reader.iterator()) {
-      populateIndexes(iterator, csvSchema, rowLocator, indexesToPopulate);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    this.csvSchema = expectedSchema;
     this.rowLocator = rowLocator;
     this.indexes = new ColumnIndexes(indexesToPopulate);
+    this.fileStartOffset = startAt;
+
+    try (var fileChannel = Files.newByteChannel(csvPath, StandardOpenOption.READ)) {
+      fileChannel.position(fileStartOffset);
+      try (var reader =
+              CsvReader.builder().build(Channels.newReader(fileChannel, StandardCharsets.UTF_8));
+          var iterator = reader.iterator()) {
+        populateIndexes(
+            fileStartOffset, splitSize, iterator, csvSchema, rowLocator, indexesToPopulate);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private void populateIndexes(
+      long startAt,
+      long splitSize,
       Iterator<CsvRow> reader,
       Schema schema,
       RowOffsetLocator rowLocator,
-      List<ColumnIndex> indexesToPopulate) {
+      List<ColumnIndex> indexesToPopulate)
+      throws IOException {
 
     // compute for each index, where required column located inside CSV row(e.g., column index)
     var indexes =
@@ -82,19 +76,41 @@ public final class CsvStorageFile implements StorageFile {
                     new IndexState(index, schema.getColumnIndex(index.column().name()).getAsInt()))
             .collect(Collectors.toList());
 
-    reader.next(); // skip CSV header
-    reader.forEachRemaining(
-        row -> {
-          rowsCount++;
-          // row ID will start from 0: ordinal number starts from 1, and it accounts header line
-          long rowId = row.getOriginalLineNumber() - 2;
-          rowLocator.addEntry(rowId, row.getStartingOffset());
-          for (IndexState indexState : indexes) {
-            var rawColVal = row.getField(indexState.columnIndex);
-            var colValue = indexState.index.column().dataType().parseFrom(rawColVal);
-            indexState.index.addEntry(rowId, colValue);
-          }
-        });
+    // skip CSV header if we start from file beginning
+    if (startAt == 0) {
+      reader.next();
+    }
+
+    while (reader.hasNext()) {
+      CsvRow row = reader.next();
+      if (startAt + row.getStartingOffset() >= startAt + splitSize) {
+        // reach split point, save end offset of last seen row
+        fileEndOffset = startAt + row.getStartingOffset() - 1;
+        break;
+      }
+      rowsCount++;
+      // row ID will start from 0: ordinal number starts from 1,
+      // and also account header line if needed.
+      long rowId = row.getOriginalLineNumber() - (startAt == 0 ? 2 : 1);
+      lastRowOffset = startAt + row.getStartingOffset();
+      rowLocator.addEntry(rowId, lastRowOffset);
+      for (IndexState indexState : indexes) {
+        var rawColVal = row.getField(indexState.columnIndex);
+        var colValue = indexState.index.column().dataType().parseFrom(rawColVal);
+        indexState.index.addEntry(rowId, colValue);
+      }
+    }
+
+    // if end offset is not updated during index populate, then we reach end of file
+    if (rowsCount > 0 && fileEndOffset == 0) {
+      fileEndOffset = Files.size(csvPath) - 1;
+    } else if (rowsCount == 0) {
+      fileEndOffset = startAt;
+    }
+  }
+
+  public long endOffset() {
+    return fileEndOffset;
   }
 
   @Override
@@ -113,6 +129,10 @@ public final class CsvStorageFile implements StorageFile {
       colIdx[i++] = index;
     }
 
+    if (rowsCount == 0) {
+      System.out.println(csvPath.getFileName() + ": skipped because empty.");
+      return RowReader.empty(new Schema(requiredColumns));
+    }
     Range<Long> rowsRange = indexes.evaluatePredicate(predicate);
     if (rowsRange.isEmpty()) {
       System.out.println(csvPath.getFileName() + ": skipped using indexes.");
@@ -144,12 +164,13 @@ public final class CsvStorageFile implements StorageFile {
         fileChannel.position(offsets.lowerEndpoint());
         startRowOffset = offsets.lowerEndpoint();
       } else {
-        startRowOffset = 0;
+        fileChannel.position(fileStartOffset);
+        startRowOffset = fileStartOffset;
       }
       if (offsets.hasUpperBound()) {
         endRowOffset = offsets.upperEndpoint();
       } else {
-        endRowOffset = fileChannel.size();
+        endRowOffset = lastRowOffset;
       }
       csvReader =
           CsvReader.builder().build(Channels.newReader(fileChannel, StandardCharsets.UTF_8));
@@ -197,7 +218,19 @@ public final class CsvStorageFile implements StorageFile {
     @Override
     public void printStats() {
       System.out.println(
-          csvPath.getFileName() + ": " + rowsRead + " rows read/total rows=" + rowsCount + ".");
+          csvPath.getFileName()
+              + "("
+              + fileStartOffset
+              + ":"
+              + fileEndOffset
+              + ")"
+              + ": "
+              + rowsRead
+              + " rows "
+              + "read/total "
+              + "rows="
+              + rowsCount
+              + ".");
     }
   }
 }

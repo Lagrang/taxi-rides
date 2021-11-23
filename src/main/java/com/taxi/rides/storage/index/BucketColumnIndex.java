@@ -64,16 +64,9 @@ public class BucketColumnIndex<T extends Comparable<? super T>, B extends Compar
   @Override
   public void addEntry(long rowId, T colValue) {
     var bucket = getBucketId.apply(colValue);
-    index.compute(
-        bucket,
-        (key, existing) -> {
-          if (existing == null) {
-            return new MinMax(rowId, rowId);
-          } else {
-            return new MinMax(
-                Math.min(existing.minRowId, rowId), Math.max(existing.maxRowId, rowId));
-          }
-        });
+    MinMax minMax = index.computeIfAbsent(bucket, key -> new MinMax(rowId, rowId));
+    minMax.minRowId = Math.min(minMax.minRowId, rowId);
+    minMax.maxRowId = Math.max(minMax.maxRowId, rowId);
   }
 
   @Override
@@ -92,9 +85,9 @@ public class BucketColumnIndex<T extends Comparable<? super T>, B extends Compar
       var upper = map.lastEntry();
       return upper != null
           ? Range.closed(
-              Math.min(lower.getValue().minRowId(), upper.getValue().minRowId()),
-              Math.max(lower.getValue().maxRowId(), upper.getValue().maxRowId()))
-          : Range.atLeast(lower.getValue().minRowId());
+              Math.min(lower.getValue().minRowId, upper.getValue().minRowId),
+              Math.max(lower.getValue().maxRowId, upper.getValue().maxRowId))
+          : Range.atLeast(lower.getValue().minRowId);
     } else if (predicate.range().hasLowerBound()) {
       var map = index.tailMap(getBucketId.apply(predicate.range().lowerEndpoint()));
       if (map.isEmpty()) {
@@ -118,5 +111,13 @@ public class BucketColumnIndex<T extends Comparable<? super T>, B extends Compar
     }
   }
 
-  record MinMax(long minRowId, long maxRowId) {}
+  class MinMax {
+    long minRowId;
+    long maxRowId;
+
+    public MinMax(long minRowId, long maxRowId) {
+      this.minRowId = minRowId;
+      this.maxRowId = maxRowId;
+    }
+  }
 }

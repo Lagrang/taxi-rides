@@ -79,6 +79,10 @@ computes start/end offsets inside CSV file. Offsets computation happens
 in [RowOffsetLocator](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/index/RowOffsetLocator.java)
 class.
 
+Second optimization is CSV file splitting. If size of CSV file greater than defined 'split point'
+(though command line), then it will be logically split into several files. Each file will be
+processed by different thread. Each logical file will have it own indexes.
+
 During query evaluation, application print 'predicate push-down' statistics, e.g. how many row read
 per each file, total rows in file, is file skipped, etc.
 

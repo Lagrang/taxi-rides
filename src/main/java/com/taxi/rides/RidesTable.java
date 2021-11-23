@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class RidesTable implements AverageDistances {
 
@@ -110,13 +111,7 @@ public final class RidesTable implements AverageDistances {
                       return files
                           .parallel()
                           .filter(RidesTable::isCsvFile)
-                          .map(
-                              path ->
-                                  new CsvStorageFile(
-                                      path,
-                                      csvSchema,
-                                      new RowOffsetLocator(settings.skipIndexStep),
-                                      prepareIndexes()))
+                          .flatMap(this::openCsvFile)
                           .collect(Collectors.toList());
                     } catch (IOException e) {
                       throw new RuntimeException(e);
@@ -129,6 +124,34 @@ public final class RidesTable implements AverageDistances {
       // simple shutdown, no need to wait termination of pool here
       pool.shutdown();
     }
+  }
+
+  /** Open CSV file at path and logically split it to several files if needed. */
+  private Stream<CsvStorageFile> openCsvFile(Path path) {
+    var res = new ArrayList<CsvStorageFile>();
+    long startAt = 0;
+    long fileSize;
+    try {
+      fileSize = Files.size(path);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    while (true) {
+      var file =
+          new CsvStorageFile(
+              path,
+              csvSchema,
+              new RowOffsetLocator(settings.skipIndexStep),
+              prepareIndexes(),
+              startAt,
+              settings.splitSize);
+      res.add(file);
+      if (startAt >= file.endOffset() || fileSize <= file.endOffset() + 1) {
+        break;
+      }
+      startAt = file.endOffset() + 1;
+    }
+    return res.stream();
   }
 
   private List<ColumnIndex> prepareIndexes() {
@@ -218,27 +241,31 @@ public final class RidesTable implements AverageDistances {
     var groupby = new HashMap<Byte, DoubleAvgAggregation>();
     long totalMs = 0;
     var sw = Stopwatch.createUnstarted();
-    while (rowReader.hasNext()) {
-      Row row = rowReader.next();
-      sw.start();
-      var start = (LocalDateTime) row.get(startTimeIdx);
-      var end = (LocalDateTime) row.get(endTimeIdx);
-      if (start != null && end != null && timeRange.contains(start) && timeRange.contains(end)) {
-        var passengerCnt = (Byte) row.get(countIdx);
-        var distance = (Double) row.get(distIdx);
-        if (passengerCnt != null && distance != null) {
-          groupby.computeIfAbsent(passengerCnt, key -> new DoubleAvgAggregation()).add(distance);
+    try (var usedToCloseReader = rowReader) {
+      while (rowReader.hasNext()) {
+        Row row = rowReader.next();
+        sw.start();
+        var start = (LocalDateTime) row.get(startTimeIdx);
+        var end = (LocalDateTime) row.get(endTimeIdx);
+        if (start != null && end != null && timeRange.contains(start) && timeRange.contains(end)) {
+          var passengerCnt = (Byte) row.get(countIdx);
+          var distance = (Double) row.get(distIdx);
+          if (passengerCnt != null && distance != null) {
+            groupby.computeIfAbsent(passengerCnt, key -> new DoubleAvgAggregation()).add(distance);
+          }
         }
+        sw.stop();
+        totalMs += sw.elapsed(TimeUnit.MILLISECONDS);
+        sw.reset();
       }
-      sw.stop();
-      totalMs += sw.elapsed(TimeUnit.MILLISECONDS);
-      sw.reset();
-    }
 
-    if (totalMs > 300) {
-      System.out.println("Agg time took " + totalMs + "ms");
+      if (totalMs > 300) {
+        System.out.println("Agg time took " + totalMs + "ms");
+      }
+      rowReader.printStats();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
-    rowReader.printStats();
 
     return groupby;
   }
@@ -253,22 +280,29 @@ public final class RidesTable implements AverageDistances {
     int initThreads = Runtime.getRuntime().availableProcessors();
     int executionThreads = Runtime.getRuntime().availableProcessors();
     int skipIndexStep = 8 * 1024;
+    long splitSize = 100 * 1024 * 1024;
     boolean disableBucketIndex = false;
     boolean disableNotNullIndex = false;
     boolean disableMinMaxIndex = false;
 
     public Settings() {}
 
+    public Settings(long splitSize) {
+      this.splitSize = splitSize;
+    }
+
     public Settings(
         int initThreads,
         int executionThreads,
         int skipIndexStep,
+        long splitSize,
         boolean disableBucketIndex,
         boolean disableNotNullIndex,
         boolean disableMinMaxIndex) {
       this.initThreads = initThreads;
       this.executionThreads = executionThreads;
       this.skipIndexStep = skipIndexStep;
+      this.splitSize = splitSize;
       this.disableBucketIndex = disableBucketIndex;
       this.disableNotNullIndex = disableNotNullIndex;
       this.disableMinMaxIndex = disableMinMaxIndex;
