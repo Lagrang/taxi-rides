@@ -18,7 +18,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -29,10 +28,10 @@ public final class CsvStorageFile implements StorageFile {
   private final Schema csvSchema;
   private final RowOffsetLocator rowLocator;
   private final ColumnIndexes indexes;
-  private long rowsCount;
   private final long fileStartOffset;
-  private long fileEndOffset;
-  private long lastRowOffset;
+  private final long rowsCount;
+  private final long fileEndOffset;
+  private final long lastRowOffset;
 
   public CsvStorageFile(
       Path csvPath,
@@ -47,65 +46,61 @@ public final class CsvStorageFile implements StorageFile {
     this.indexes = new ColumnIndexes(indexesToPopulate);
     this.fileStartOffset = startAt;
 
+    // populate indexes
     try (var fileChannel = Files.newByteChannel(csvPath, StandardOpenOption.READ)) {
       fileChannel.position(fileStartOffset);
       try (var reader =
               CsvReader.builder().build(Channels.newReader(fileChannel, StandardCharsets.UTF_8));
           var iterator = reader.iterator()) {
-        populateIndexes(splitSize, iterator, indexesToPopulate);
+
+        // skip CSV header if we start from file beginning
+        if (fileStartOffset == 0) {
+          iterator.next();
+        }
+
+        var indexCtxs =
+            indexesToPopulate.stream()
+                .map(
+                    index ->
+                        new IndexState(
+                            index, csvSchema.getColumnIndex(index.column().name()).getAsInt()))
+                .collect(Collectors.toList());
+
+        long splitPoint = fileStartOffset + splitSize;
+        long countOfRows = 0;
+        long lastOffset = fileStartOffset;
+        while (iterator.hasNext()) {
+          CsvRow row = iterator.next();
+          countOfRows++;
+          // row ID will start from 0: ordinal number starts from 1,
+          // and also account header line if needed.
+          long rowId = row.getOriginalLineNumber() - (fileStartOffset == 0 ? 2 : 1);
+          lastOffset = fileStartOffset + row.getStartingOffset();
+          this.rowLocator.addEntry(rowId, lastOffset);
+          for (IndexState indexState : indexCtxs) {
+            var rawColVal = row.getField(indexState.columnIndex);
+            var colValue = indexState.index.column().dataType().parseFrom(rawColVal);
+            indexState.index.addEntry(rowId, colValue);
+          }
+
+          if (lastOffset >= splitPoint) {
+            // reach split point
+            break;
+          }
+        }
+
+        rowsCount = countOfRows;
+        lastRowOffset = lastOffset;
+        if (iterator.hasNext()) {
+          // reach split point
+          fileEndOffset = fileStartOffset + iterator.next().getStartingOffset() - 1;
+        } else {
+          // reach end of file
+          fileEndOffset = Files.size(this.csvPath) - 1;
+        }
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
-    }
-  }
-
-  private void populateIndexes(
-      long splitSize, Iterator<CsvRow> reader, List<ColumnIndex> indexesToPopulate)
-      throws IOException {
-
-    // compute for each index, where required column located inside CSV row(e.g., column index)
-    var indexes =
-        indexesToPopulate.stream()
-            .map(
-                index ->
-                    new IndexState(
-                        index, csvSchema.getColumnIndex(index.column().name()).getAsInt()))
-            .collect(Collectors.toList());
-
-    // skip CSV header if we start from file beginning
-    if (fileStartOffset == 0) {
-      reader.next();
-    }
-
-    long splitPoint = fileStartOffset + splitSize;
-    fileEndOffset = fileStartOffset;
-    lastRowOffset = fileStartOffset;
-    while (reader.hasNext()) {
-      CsvRow row = reader.next();
-      rowsCount++;
-      // row ID will start from 0: ordinal number starts from 1,
-      // and also account header line if needed.
-      long rowId = row.getOriginalLineNumber() - (fileStartOffset == 0 ? 2 : 1);
-      lastRowOffset = fileStartOffset + row.getStartingOffset();
-      rowLocator.addEntry(rowId, lastRowOffset);
-      for (IndexState indexState : indexes) {
-        var rawColVal = row.getField(indexState.columnIndex);
-        var colValue = indexState.index.column().dataType().parseFrom(rawColVal);
-        indexState.index.addEntry(rowId, colValue);
-      }
-
-      if (lastRowOffset >= splitPoint) {
-        // reach split point
-        break;
-      }
-    }
-
-    if (reader.hasNext()) {
-      // reach split point
-      fileEndOffset = fileStartOffset + reader.next().getStartingOffset() - 1;
-    } else {
-      // reach end of file
-      fileEndOffset = Files.size(csvPath) - 1;
     }
   }
 

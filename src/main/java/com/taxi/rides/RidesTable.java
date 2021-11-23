@@ -108,7 +108,9 @@ public final class RidesTable implements AverageDistances {
           pool.submit(
                   () -> {
                     try (var files = Files.walk(dataDir, FileVisitOption.FOLLOW_LINKS)) {
-                      return files
+                      // original stream can not be split and hence, cannot be parallel
+                      var csvFiles = files.collect(Collectors.toList());
+                      return csvFiles.stream()
                           .parallel()
                           .filter(RidesTable::isCsvFile)
                           .flatMap(this::openCsvFile)

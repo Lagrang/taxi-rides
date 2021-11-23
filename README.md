@@ -14,48 +14,60 @@ Print help: `./gradlew run --args="-h"`
 #### Example run:
 
 ```
-./gradlew run --args="-f \"/home/lagrang/Downloads/trip_data\" --from \"2020-05-01 00:00:00\" --until \"2020-08-11 00:00:00\" --query-threads=4 --split-size=130"
-Initializing from folder: /home/lagrang/Downloads/trip_data
-Initialization took 25sec
+./gradlew run --args="-f \"/home/lagrang/Downloads/trip_data\" --from \"2020-05-01 00:00:00\" --until \"2020-08-11 00:00:00\" --query-threads=8 --init-threads=8 --split-size=70"
 
-yellow_tripdata_2020-01.csv(0:136315006): skipped using indexes.
-yellow_tripdata_2020-11.csv(136314980:138989554): skipped using indexes.
-yellow_tripdata_2020-01.csv(136315007:272630053): skipped using indexes.
-yellow_tripdata_2020-09.csv(0:123394594): skipped using indexes.
-yellow_tripdata_2020-10.csv(136314992:154917591): skipped using indexes.
-yellow_tripdata_2020-10.csv(0:136314991): skipped using indexes.
-yellow_tripdata_2020-01.csv(408945054:545260123): skipped using indexes.
-yellow_tripdata_2020-01.csv(545260124:593610735): skipped using indexes.
-yellow_tripdata_2020-02.csv(136315010:272630047): 32769 rows read/total rows=1468771.
-yellow_tripdata_2020-02.csv(408945054:545260107): skipped using indexes.
-yellow_tripdata_2020-02.csv(272630048:408945053): skipped using indexes.
-yellow_tripdata_2020-01.csv(272630054:408945053): 57345 rows read/total rows=1470477.
-yellow_tripdata_2020-11.csv(0:136314979): skipped using indexes.
-yellow_tripdata_2020-03.csv(272630049:278288607): skipped using indexes.
-yellow_tripdata_2020-12.csv(0:134481399): skipped using indexes.
-yellow_tripdata_2020-04.csv(0:21662260): skipped using indexes.
-yellow_tripdata_2020-03.csv(0:136315002): 16385 rows read/total rows=1469303.
-yellow_tripdata_2020-03.csv(136315003:272630048): 139265 rows read/total rows=1473848.
-yellow_tripdata_2020-02.csv(545260108:584190584): 16385 rows read/total rows=421874.
-yellow_tripdata_2020-05.csv(0:31641589): 294913 rows read/total rows=348371.
-yellow_tripdata_2020-02.csv(0:136315009): skipped using indexes.
-yellow_tripdata_2020-06.csv(0:50277192): 499713 rows read/total rows=549760.
+Initializing from folder: /home/lagrang/Downloads/trip_data
+Initialization took 8sec
+
+yellow_tripdata_2020-02.csv(146800935:220201371): skipped using indexes.
+yellow_tripdata_2020-10.csv(146800841:154917591): skipped using indexes.
+yellow_tripdata_2020-02.csv(73400496:146800934): skipped using indexes.
+yellow_tripdata_2020-02.csv(293601790:367002258): skipped using indexes.
+yellow_tripdata_2020-02.csv(367002259:440402748): skipped using indexes.
+yellow_tripdata_2020-01.csv(73400501:146801001): skipped using indexes.
+yellow_tripdata_2020-01.csv(146801002:220201419): skipped using indexes.
+yellow_tripdata_2020-11.csv(73400487:138989554): 319489 rows read/total rows=714299.
+yellow_tripdata_2020-08.csv(0:73400490): 507905 rows read/total rows=798072.
+yellow_tripdata_2020-09.csv(73400440:123394594): 155649 rows read/total rows=544910.
+yellow_tripdata_2020-10.csv(73400412:146800840): 532481 rows read/total rows=794966.
+yellow_tripdata_2020-01.csv(293601878:367002304): skipped using indexes.
+yellow_tripdata_2020-01.csv(220201420:293601877): skipped using indexes.
+yellow_tripdata_2020-01.csv(513803219:587203695): skipped using indexes.
+yellow_tripdata_2020-01.csv(440402717:513803218): skipped using indexes.
+yellow_tripdata_2020-10.csv(0:73400411): 761857 rows read/total rows=794832.
 yellow_tripdata_2020-07.csv(0:73326706): 745473 rows read/total rows=800412.
-yellow_tripdata_2020-08.csv(0:92411544): 942081 rows read/total rows=1007284.
-Query took: 1sec
+yellow_tripdata_2020-11.csv(0:73400486): 704513 rows read/total rows=794686.
+yellow_tripdata_2020-01.csv(0:73400500): 793962 rows read/total rows=793962.
+yellow_tripdata_2020-02.csv(0:73400495): skipped using indexes.
+yellow_tripdata_2020-01.csv(587203696:593610735): skipped using indexes.
+yellow_tripdata_2020-08.csv(73400491:92411544): 139265 rows read/total rows=209212.
+yellow_tripdata_2020-09.csv(0:73400439): 606209 rows read/total rows=796102.
+yellow_tripdata_2020-02.csv(220201372:293601789): 791038 rows read/total rows=791038.
+yellow_tripdata_2020-03.csv(73400504:146800992): skipped using indexes.
+yellow_tripdata_2020-02.csv(440402749:513803221): skipped using indexes.
+yellow_tripdata_2020-04.csv(0:21662260): skipped using indexes.
+yellow_tripdata_2020-05.csv(0:31641589): 294913 rows read/total rows=348371.
+yellow_tripdata_2020-06.csv(0:50277192): 499713 rows read/total rows=549760.
+yellow_tripdata_2020-03.csv(220201482:278288607): 598017 rows read/total rows=633537.
+yellow_tripdata_2020-12.csv(73400444:134481399): 368641 rows read/total rows=666682.
+yellow_tripdata_2020-01.csv(367002305:440402716): 790805 rows read/total rows=790805.
+yellow_tripdata_2020-02.csv(513803222:584190584): 712705 rows read/total rows=760823.
+yellow_tripdata_2020-12.csv(0:73400443): 573441 rows read/total rows=795215.
+yellow_tripdata_2020-03.csv(0:73400503): 791239 rows read/total rows=791239.
+yellow_tripdata_2020-03.csv(146800993:220201481): 791524 rows read/total rows=791524.
+Query took: 2sec
 
 Average distances(passengers count to average distance):
 0 : 2.633296195986711
-1 : 2.721230739382146
+1 : 2.721228644785086
 2 : 2.940584374970827
 3 : 2.8780335840741578
 4 : 3.033393323039244
 5 : 2.812991578535052
-6 : 2.8506969361166803
+6 : 2.8505635911717975
 7 : 2.168
 8 : 0.0
 9 : 0.0
-
 
 ```
 
