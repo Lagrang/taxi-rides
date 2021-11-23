@@ -109,9 +109,6 @@ processed by different thread. Each logical file will have it own indexes.
 During query evaluation, application print 'predicate push-down' statistics, e.g. how many row read
 per each file, total rows in file, is file skipped, etc.
 
-Right now, according to profiler, most of the time application spent in CSV parsing. Other code
-parts is negligible against it.
-
 During development, profiler reveals that measurable time spent to parse timestamp columns. At
 beginning, parser
 implementation([TimestampDataType](https://github.com/Lagrang/taxi-rides/blob/main/src/main/java/com/taxi/rides/storage/schema/datatypes/TimestampDataType.java))
