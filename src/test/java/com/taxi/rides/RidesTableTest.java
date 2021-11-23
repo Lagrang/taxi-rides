@@ -142,7 +142,8 @@ class RidesTableTest {
     }
 
     expected.forEach((k, v) -> System.out.println(k + " : " + v));
-    var table = new RidesTable(new Settings(128 * 1024));
+    var settings = new Settings(12 * 1024);
+    var table = new RidesTable(settings);
     table.init(csvDir);
     var res = table.getAverageDistances(queryStartTs, queryEndTs);
     expected.forEach(

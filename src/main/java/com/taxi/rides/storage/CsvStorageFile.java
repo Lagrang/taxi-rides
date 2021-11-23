@@ -1,12 +1,13 @@
 package com.taxi.rides.storage;
 
+import com.google.common.collect.Iterators;
+import com.google.common.collect.PeekingIterator;
 import com.google.common.collect.Range;
 import com.taxi.rides.storage.index.ColumnIndex;
 import com.taxi.rides.storage.index.ColumnIndexes;
 import com.taxi.rides.storage.index.RowOffsetLocator;
 import com.taxi.rides.storage.schema.Column;
 import com.taxi.rides.storage.schema.Schema;
-import de.siegmar.fastcsv.reader.CloseableIterator;
 import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
 import java.io.IOException;
@@ -51,8 +52,7 @@ public final class CsvStorageFile implements StorageFile {
       try (var reader =
               CsvReader.builder().build(Channels.newReader(fileChannel, StandardCharsets.UTF_8));
           var iterator = reader.iterator()) {
-        populateIndexes(
-            fileStartOffset, splitSize, iterator, csvSchema, rowLocator, indexesToPopulate);
+        populateIndexes(splitSize, iterator, indexesToPopulate);
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -60,12 +60,7 @@ public final class CsvStorageFile implements StorageFile {
   }
 
   private void populateIndexes(
-      long startAt,
-      long splitSize,
-      Iterator<CsvRow> reader,
-      Schema schema,
-      RowOffsetLocator rowLocator,
-      List<ColumnIndex> indexesToPopulate)
+      long splitSize, Iterator<CsvRow> reader, List<ColumnIndex> indexesToPopulate)
       throws IOException {
 
     // compute for each index, where required column located inside CSV row(e.g., column index)
@@ -73,39 +68,44 @@ public final class CsvStorageFile implements StorageFile {
         indexesToPopulate.stream()
             .map(
                 index ->
-                    new IndexState(index, schema.getColumnIndex(index.column().name()).getAsInt()))
+                    new IndexState(
+                        index, csvSchema.getColumnIndex(index.column().name()).getAsInt()))
             .collect(Collectors.toList());
 
     // skip CSV header if we start from file beginning
-    if (startAt == 0) {
+    if (fileStartOffset == 0) {
       reader.next();
     }
 
+    long splitPoint = fileStartOffset + splitSize;
+    fileEndOffset = fileStartOffset;
+    lastRowOffset = fileStartOffset;
     while (reader.hasNext()) {
       CsvRow row = reader.next();
-      if (startAt + row.getStartingOffset() >= startAt + splitSize) {
-        // reach split point, save end offset of last seen row
-        fileEndOffset = startAt + row.getStartingOffset() - 1;
-        break;
-      }
       rowsCount++;
       // row ID will start from 0: ordinal number starts from 1,
       // and also account header line if needed.
-      long rowId = row.getOriginalLineNumber() - (startAt == 0 ? 2 : 1);
-      lastRowOffset = startAt + row.getStartingOffset();
+      long rowId = row.getOriginalLineNumber() - (fileStartOffset == 0 ? 2 : 1);
+      lastRowOffset = fileStartOffset + row.getStartingOffset();
       rowLocator.addEntry(rowId, lastRowOffset);
       for (IndexState indexState : indexes) {
         var rawColVal = row.getField(indexState.columnIndex);
         var colValue = indexState.index.column().dataType().parseFrom(rawColVal);
         indexState.index.addEntry(rowId, colValue);
       }
+
+      if (lastRowOffset >= splitPoint) {
+        // reach split point
+        break;
+      }
     }
 
-    // if end offset is not updated during index populate, then we reach end of file
-    if (rowsCount > 0 && fileEndOffset == 0) {
+    if (reader.hasNext()) {
+      // reach split point
+      fileEndOffset = fileStartOffset + reader.next().getStartingOffset() - 1;
+    } else {
+      // reach end of file
       fileEndOffset = Files.size(csvPath) - 1;
-    } else if (rowsCount == 0) {
-      fileEndOffset = startAt;
     }
   }
 
@@ -156,12 +156,11 @@ public final class CsvStorageFile implements StorageFile {
 
     private final Schema readerSchema;
     private final CsvReader csvReader;
-    private final CloseableIterator<CsvRow> rowIter;
+    private final PeekingIterator<CsvRow> rowIter;
     private final int[] colIdx;
     private final SeekableByteChannel fileChannel;
     private final long startRowOffset;
     private final long endRowOffset;
-    private long bytesRead;
     private long rowsRead;
 
     public CsvIter(int[] colIdx, Range<Long> offsets) throws IOException {
@@ -181,7 +180,7 @@ public final class CsvStorageFile implements StorageFile {
       }
       csvReader =
           CsvReader.builder().build(Channels.newReader(fileChannel, StandardCharsets.UTF_8));
-      rowIter = csvReader.iterator();
+      rowIter = Iterators.peekingIterator(csvReader.iterator());
       if (startRowOffset == 0) {
         // we start from beginning of CSV file and should skip header
         rowIter.next();
@@ -199,7 +198,8 @@ public final class CsvStorageFile implements StorageFile {
 
     @Override
     public boolean hasNext() {
-      return endRowOffset > startRowOffset + bytesRead && rowIter.hasNext();
+      return rowIter.hasNext()
+          && endRowOffset >= startRowOffset + rowIter.peek().getStartingOffset();
     }
 
     @Override
@@ -207,7 +207,6 @@ public final class CsvStorageFile implements StorageFile {
       rowsRead++;
       var result = new Row(colIdx.length);
       var row = rowIter.next();
-      bytesRead = row.getStartingOffset();
       int outputSchemaIdx = 0;
       for (int idx : colIdx) {
         String rawVal = row.getField(idx);
@@ -224,6 +223,7 @@ public final class CsvStorageFile implements StorageFile {
 
     @Override
     public void printStats() {
+      assert (rowsRead <= rowsCount);
       System.out.println(
           csvPath.getFileName()
               + "("

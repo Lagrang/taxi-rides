@@ -14,40 +14,31 @@ Print help: `./gradlew run --args="-h"`
 #### Example run:
 
 ```
-./gradlew run --args="-f \"$HOME/trip_data\" --from \"2020-05-01 00:00:00\" --until \"2020-08-11 00:00:00\" --no-min-max-index"
-
-Min-max index disabled
-Initializing from folder: /home/lagrang/Downloads/trip_data
-Initialization took 20sec
-
+./gradlew run --args="-f \"/home/lagrang/Downloads/trip_data\" --from \"2020-05-01 00:00:00\" --until \"2020-08-11 00:00:00\" --query-threads=4 --split-size=130"
 Initializing from folder: /home/lagrang/Downloads/trip_data
 Initialization took 25sec
 
-yellow_tripdata_2020-01.csv: skipped using indexes.
-yellow_tripdata_2020-11.csv: skipped using indexes.
-yellow_tripdata_2020-09.csv: skipped using indexes.
-yellow_tripdata_2020-01.csv: skipped using indexes.
-yellow_tripdata_2020-11.csv: skipped using indexes.
-yellow_tripdata_2020-09.csv: skipped using indexes.
-yellow_tripdata_2020-01.csv: skipped using indexes.
-yellow_tripdata_2020-10.csv: skipped using indexes.
-yellow_tripdata_2020-01.csv: skipped using indexes.
-yellow_tripdata_2020-04.csv: skipped using indexes.
-yellow_tripdata_2020-10.csv: skipped using indexes.
-yellow_tripdata_2020-02.csv: skipped using indexes.
-yellow_tripdata_2020-02.csv: skipped using indexes.
-yellow_tripdata_2020-02.csv: skipped using indexes.
-yellow_tripdata_2020-02.csv: skipped using indexes.
-yellow_tripdata_2020-03.csv(0:104857600): 16385 rows read/total rows=1129738.
-yellow_tripdata_2020-03.csv(209715213:278288607): 24577 rows read/total rows=746599.
-yellow_tripdata_2020-12.csv: skipped using indexes.
-yellow_tripdata_2020-12.csv: skipped using indexes.
-yellow_tripdata_2020-01.csv: skipped using indexes.
-yellow_tripdata_2020-02.csv(209715325:314572996): 32769 rows read/total rows=1130341.
-yellow_tripdata_2020-02.csv(524288247:584190584): 24577 rows read/total rows=647614.
-yellow_tripdata_2020-01.csv(314572946:419430572): 57345 rows read/total rows=1131516.
-yellow_tripdata_2020-03.csv(104857601:209715212): 139265 rows read/total rows=1130955.
+yellow_tripdata_2020-01.csv(0:136315006): skipped using indexes.
+yellow_tripdata_2020-11.csv(136314980:138989554): skipped using indexes.
+yellow_tripdata_2020-01.csv(136315007:272630053): skipped using indexes.
+yellow_tripdata_2020-09.csv(0:123394594): skipped using indexes.
+yellow_tripdata_2020-10.csv(136314992:154917591): skipped using indexes.
+yellow_tripdata_2020-10.csv(0:136314991): skipped using indexes.
+yellow_tripdata_2020-01.csv(408945054:545260123): skipped using indexes.
+yellow_tripdata_2020-01.csv(545260124:593610735): skipped using indexes.
+yellow_tripdata_2020-02.csv(136315010:272630047): 32769 rows read/total rows=1468771.
+yellow_tripdata_2020-02.csv(408945054:545260107): skipped using indexes.
+yellow_tripdata_2020-02.csv(272630048:408945053): skipped using indexes.
+yellow_tripdata_2020-01.csv(272630054:408945053): 57345 rows read/total rows=1470477.
+yellow_tripdata_2020-11.csv(0:136314979): skipped using indexes.
+yellow_tripdata_2020-03.csv(272630049:278288607): skipped using indexes.
+yellow_tripdata_2020-12.csv(0:134481399): skipped using indexes.
+yellow_tripdata_2020-04.csv(0:21662260): skipped using indexes.
+yellow_tripdata_2020-03.csv(0:136315002): 16385 rows read/total rows=1469303.
+yellow_tripdata_2020-03.csv(136315003:272630048): 139265 rows read/total rows=1473848.
+yellow_tripdata_2020-02.csv(545260108:584190584): 16385 rows read/total rows=421874.
 yellow_tripdata_2020-05.csv(0:31641589): 294913 rows read/total rows=348371.
+yellow_tripdata_2020-02.csv(0:136315009): skipped using indexes.
 yellow_tripdata_2020-06.csv(0:50277192): 499713 rows read/total rows=549760.
 yellow_tripdata_2020-07.csv(0:73326706): 745473 rows read/total rows=800412.
 yellow_tripdata_2020-08.csv(0:92411544): 942081 rows read/total rows=1007284.
@@ -55,15 +46,16 @@ Query took: 1sec
 
 Average distances(passengers count to average distance):
 0 : 2.633296195986711
-1 : 2.721228644785086
+1 : 2.721230739382146
 2 : 2.940584374970827
 3 : 2.8780335840741578
 4 : 3.033393323039244
 5 : 2.812991578535052
-6 : 2.8505635911717975
+6 : 2.8506969361166803
 7 : 2.168
 8 : 0.0
 9 : 0.0
+
 
 ```
 
