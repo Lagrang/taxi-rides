@@ -191,10 +191,7 @@ public final class RidesTable implements AverageDistances {
             .withBetween(
                 List.of(
                     new Between<>(pickupDateCol, Range.atLeast(start)),
-                    // this safe to set more strict predicate on dropoff column, because 'dropoff'
-                    // always greater than 'pickup' timestamp. Such predicate change reduces query
-                    // time by several times(tested on taxi rides CSV files from S3).
-                    new Between<>(dropoffDateCol, Range.closed(start, end))))
+                    new Between<>(dropoffDateCol, Range.atMost(end))))
             .withNotEquals(
                 List.of(
                     new NotEqual(passengerCountCol, null), new NotEqual(tripDistanceCol, null)));
